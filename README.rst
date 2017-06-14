@@ -18,7 +18,7 @@ introduce events and register hooks.
 
     hooks = HookRegistry()
 
-    # It doesn't matter where you put the hook instance.
+    # It doesn't matter where you put the event instance.
     # We set it as hooks attribute to keep things tidy.
     hooks.user_added = hooks.register_event('user_added')
 

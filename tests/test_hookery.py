@@ -9,8 +9,8 @@ def test_e2e():
         def __init__(self):
             self._hooks = HookRegistry(self)
             self._data = set()
-            self.item_added = self._hooks.create_hook('item_added')
-            self.item_removed = self._hooks.create_hook('item_removed')
+            self.item_added = self._hooks.register_event('item_added')
+            self.item_removed = self._hooks.register_event('item_removed')
 
         def add(self, item):
             self._data.add(item)
@@ -68,3 +68,36 @@ def test_e2e():
     bag.add('hello')
     assert len(calls) == 8
     assert calls[-3:] == ['first', 'second', 'third']
+
+
+def test_hook_registered_hook():
+    hooks = HookRegistry()
+
+    hooks_registered = []
+
+    @hooks.hook_registered
+    def hook_registered(event, hook):
+        hooks_registered.append(('hook_registered', event, hook.__name__))
+
+    assert len(hooks_registered) == 0
+
+    something_happened = hooks.register_event('something_happened')
+
+    assert len(hooks_registered) == 0
+
+    @something_happened
+    def first_hook():
+        pass
+
+    assert len(hooks_registered) == 1
+
+    @something_happened
+    def second_hook():
+        pass
+
+    assert len(hooks_registered) == 2
+
+    assert hooks_registered == [
+        ('hook_registered', 'something_happened', 'first_hook'),
+        ('hook_registered', 'something_happened', 'second_hook'),
+    ]

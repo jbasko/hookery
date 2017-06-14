@@ -1,7 +1,7 @@
 from hookery import HookRegistry
 
 hooks = HookRegistry()
-hooks.user_added = hooks.create_hook('user_added')
+hooks.user_added = hooks.register_event('user_added')
 
 _users = {}
 

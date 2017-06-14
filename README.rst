@@ -9,7 +9,7 @@ hookery
 
 It's really simple. There are some events in the lifetime of your simple Python application that you want to hook into,
 and you don't want to be overriding methods or writing conditional code to do that. What you do is you
-introduce hooks and register callbacks.
+introduce events and register hooks.
 
 
 .. code-block:: python
@@ -20,7 +20,7 @@ introduce hooks and register callbacks.
 
     # It doesn't matter where you put the hook instance.
     # We set it as hooks attribute to keep things tidy.
-    hooks.user_added = hooks.create_hook('user_added')
+    hooks.user_added = hooks.register_event('user_added')
 
     _users = {}
 

@@ -1,6 +1,12 @@
 """
 This demonstrates that hookery allows to hook into itself too:
 you can hook into "hook_registered" event to be notified when someone registers a hook on any event!
+
+Running this module will print the following to stdout::
+
+    <function send_xmas_greeting at 0x10af85048> wants to listen to on_christmas
+    <function send_easter_greeting at 0x10af850d0> wants to listen to on_easter
+
 """
 
 from hookery import HookRegistry

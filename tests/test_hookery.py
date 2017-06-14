@@ -77,7 +77,7 @@ def test_hook_registered_hook():
 
     @hooks.hook_registered
     def hook_registered(event, hook):
-        hooks_registered.append(('hook_registered', event, hook.__name__))
+        hooks_registered.append(('hook_registered', event.name, hook.__name__))
 
     assert len(hooks_registered) == 0
 

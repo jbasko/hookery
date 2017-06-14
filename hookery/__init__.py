@@ -46,7 +46,7 @@ class HookRegistry(object):
         assert event in self._events
         assert callable(hook)
         self._hooks[event].append((signature(hook), hook))
-        self.handle('_hook_registered', event=event, hook=hook)
+        self.handle('_hook_registered', event=self._events[event], hook=hook)
 
     def _register_internal_hook(self, event, hook):
         assert event in self._internal_events

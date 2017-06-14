@@ -2,9 +2,15 @@
 hookery
 *******
 
+.. code-block:: shell
+
+    pip install hookery
+
+
 It's really simple. There are some events in the lifetime of your simple Python application that you want to hook into,
 and you don't want to be overriding methods or writing conditional code to do that. What you do is you
 introduce hooks and register callbacks.
+
 
 .. code-block:: python
 
@@ -34,9 +40,10 @@ introduce hooks and register callbacks.
         print('Hi, {}'.format(username))
 
 
+Now you can *create* some users and let all listeners know about it:
+
 .. code-block:: python
 
     >>> create_user('Bob', password='secret')
     A new user has been added!
     Hi, Bob
-

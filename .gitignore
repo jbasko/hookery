@@ -2,4 +2,6 @@
 .cache
 .tox
 *.egg-info
+dist
+
 

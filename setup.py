@@ -13,7 +13,7 @@ def read(fname):
 
 setup(
     name='hookery',
-    version='0.1.1',
+    version='0.1.2',
     author='Jazeps Basko',
     author_email='jazeps.basko@gmail.com',
     maintainer='Jazeps Basko',
@@ -22,8 +22,7 @@ setup(
     url='https://github.com/jbasko/hookery',
     description='Trivial, primitive, naive, and optimistic hook registry in Python',
     long_description=read('README.rst'),
-    modules=['hookery'],
-    install_requires=[],
+    packages=['hookery'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',

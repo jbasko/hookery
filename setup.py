@@ -13,7 +13,7 @@ def read(fname):
 
 setup(
     name='hookery',
-    version='0.0.1',
+    version='0.1.1',
     author='Jazeps Basko',
     author_email='jazeps.basko@gmail.com',
     maintainer='Jazeps Basko',

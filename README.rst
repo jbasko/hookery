@@ -11,6 +11,9 @@ introduce hooks and register callbacks.
     from hookery import HookRegistry
 
     hooks = HookRegistry()
+
+    # It doesn't matter where you put the hook instance.
+    # We set it as hooks attribute to keep things tidy.
     hooks.user_added = hooks.create_hook('user_added')
 
     _users = {}

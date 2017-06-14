@@ -23,7 +23,7 @@ class Hook(object):
 
 
 class HookRegistry(object):
-    def __init__(self, owner):
+    def __init__(self, owner=None):
         self._owner = owner
         self._callbacks = collections.defaultdict(list)
         self._hooks = {}

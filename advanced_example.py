@@ -31,4 +31,3 @@ def send_xmas_greeting():
 @on_easter
 def send_easter_greeting():
     print('Happy Easter!')
-

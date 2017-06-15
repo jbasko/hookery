@@ -70,6 +70,19 @@ def test_e2e():
     assert calls[-3:] == ['first', 'second', 'third']
 
 
+def test_calling_event_returns_same_function():
+    hooks = HookRegistry()
+    a_event = hooks.register_event('a_event')
+
+    def f1():
+        pass
+
+    f2 = lambda x: x
+
+    assert a_event(f1) is f1
+    assert a_event(f2) is f2
+
+
 def test_hook_registered_hook():
     hooks = HookRegistry()
 
@@ -143,3 +156,31 @@ def test_event_register_hook_and_trigger_methods():
 
     event1.trigger(id=2)
     assert calls == [1, 2]
+
+
+def test_unregister_hook():
+    hooks = HookRegistry()
+
+    calls = []
+
+    a_event = hooks.register_event('a_event')
+
+    @a_event
+    def x_hook(id):
+        calls.append('x{}'.format(id))
+
+    @a_event
+    def y_hook(id):
+        calls.append('y{}'.format(id))
+
+    a_event.trigger(id=1)
+    a_event.trigger(id=2)
+
+    assert calls == ['x1', 'y1', 'x2', 'y2']
+
+    hooks.unregister_hook(a_event, x_hook)
+
+    a_event.trigger(id=3)
+    a_event.trigger(id=4)
+
+    assert calls == ['x1', 'y1', 'x2', 'y2', 'y3', 'y4']

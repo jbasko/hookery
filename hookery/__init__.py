@@ -21,13 +21,13 @@ class Event(object):
             self.stop_condition = lambda result, sc=stop_condition: result == sc
 
     def __call__(self, hook_func):
-        self.register_hook(hook_func)
+        return self.register_hook(hook_func)
 
     def __repr__(self):
         return '<{} {!r}>'.format(self.__class__.__name__, self.name)
 
     def register_hook(self, hook_func):
-        self._register_hook_func(self.name, hook_func)
+        return self._register_hook_func(self.name, hook_func)
 
     def trigger(self, **kwargs):
         self._trigger_func(self, **kwargs)
@@ -49,12 +49,20 @@ class HookRegistry(object):
         self._events[name] = event
         return event
 
-    def register_hook(self, event, hook):
+    def register_hook(self, event_name, hook):
         assert callable(hook)
-        assert event in self._events
-        self._hooks[event].append((signature(hook), hook))
-        if not event.startswith('__'):
-            self.hook_registered.trigger(event=self._events[event], hook=hook)
+        if isinstance(event_name, Event):
+            event_name = event_name.name
+        assert event_name in self._events
+        self._hooks[event_name].append((signature(hook), hook))
+        if not event_name.startswith('__'):
+            self.hook_registered.trigger(event=self._events[event_name], hook=hook)
+        return hook
+
+    def unregister_hook(self, event_name, hook):
+        if isinstance(event_name, Event):
+            event_name = event_name.name
+        self._hooks[event_name] = [h for h in self._hooks[event_name] if h[1] is not hook]
 
     def handle(self, event_, **kwargs):
         if isinstance(event_, Event):

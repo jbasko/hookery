@@ -27,4 +27,3 @@ def say_hi(username):
 
 
 create_user('Bob', password='secret')
-

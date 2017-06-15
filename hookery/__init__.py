@@ -10,7 +10,9 @@ class Event(object):
     def __init__(self, name, register_hook_func, trigger_func=None, stop_condition=None):
         self.name = name
 
+        assert callable(register_hook_func)
         self._register_hook_func = register_hook_func
+
         self._trigger_func = trigger_func
 
         if stop_condition is None:
@@ -27,9 +29,14 @@ class Event(object):
         return '<{} {!r}>'.format(self.__class__.__name__, self.name)
 
     def register_hook(self, hook_func):
-        return self._register_hook_func(self.name, hook_func)
+        registered_hook_func = self._register_hook_func(self.name, hook_func)
+        if not callable(registered_hook_func):
+            raise RuntimeError('Invalid register_hook_func for {!r}: it did not return the registered hook function')
+        return registered_hook_func
 
     def trigger(self, **kwargs):
+        if self._trigger_func is None:
+            raise ValueError('{!r} cannot be triggered - it has no trigger_func'.format(self))
         self._trigger_func(self, **kwargs)
 
 

@@ -1,6 +1,36 @@
 import time
 
-from hookery import HookRegistry
+from hookery import HookRegistry, Event
+
+
+def test_event_is_a_decorator():
+    a_event = Event('a_event', register_hook_func=lambda event, hook: hook)
+
+    assert a_event.name == 'a_event'
+    assert callable(a_event)
+
+    def f1():
+        pass
+
+    f2 = lambda x: x
+
+    assert a_event(f1) is f1
+    assert a_event(f2) is f2
+
+
+def test_register_event_returns_event():
+    event = HookRegistry().register_event('a_event')
+    assert isinstance(event, Event)
+
+
+def test_register_hook_returns_hook_function():
+    registry = HookRegistry()
+    registry.register_event('a_event')
+
+    def hook_func(x):
+        return x
+
+    assert registry.register_hook('a_event', hook_func) is hook_func
 
 
 def test_e2e():
@@ -68,19 +98,6 @@ def test_e2e():
     bag.add('hello')
     assert len(calls) == 8
     assert calls[-3:] == ['first', 'second', 'third']
-
-
-def test_calling_event_returns_same_function():
-    hooks = HookRegistry()
-    a_event = hooks.register_event('a_event')
-
-    def f1():
-        pass
-
-    f2 = lambda x: x
-
-    assert a_event(f1) is f1
-    assert a_event(f2) is f2
 
 
 def test_hook_registered_hook():

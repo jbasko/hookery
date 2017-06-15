@@ -21,6 +21,9 @@ class Event(object):
     def __call__(self, hook_func):
         self.register_hook_func(self.name, hook_func)
 
+    def __repr__(self):
+        return '<{} {!r}>'.format(self.__class__.__name__, self.name)
+
 
 class HookRegistry(object):
     def __init__(self, owner=None):

@@ -1,14 +1,19 @@
 from hookery import HookRegistry
 
 hooks = HookRegistry()
+
+# It doesn't matter where you put the event instance.
+# We set it as a hooks attribute just to keep things tidy
+# in this module.
 hooks.user_added = hooks.register_event('user_added')
 
 _users = {}
 
 
 def create_user(username, password):
+    # A dummy user storage
     _users[username] = password
-    hooks.handle(hooks.user_added, username=username)
+    hooks.user_added.trigger(username=username)
 
 
 @hooks.user_added

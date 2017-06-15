@@ -125,3 +125,21 @@ def test_hook_with_kwargs_gets_all_event_kwargs():
     hooks.handle('event1', a=1, b=2, c=3, d=4)
 
     assert len(calls) == 2
+
+
+def test_event_register_hook_and_trigger_methods():
+    hooks = HookRegistry()
+
+    calls = []
+
+    event1 = hooks.register_event('event1')
+
+    @event1
+    def handle_event(id):
+        calls.append(id)
+
+    event1.trigger(id=1)
+    assert calls == [1]
+
+    event1.trigger(id=2)
+    assert calls == [1, 2]

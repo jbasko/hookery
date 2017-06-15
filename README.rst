@@ -19,15 +19,17 @@ introduce events and register hooks.
     hooks = HookRegistry()
 
     # It doesn't matter where you put the event instance.
-    # We set it as hooks attribute to keep things tidy.
+    # We set it as a hooks attribute just to keep things tidy
+    # in this module.
     hooks.user_added = hooks.register_event('user_added')
 
+    # A dummy user storage
     _users = {}
 
 
     def create_user(username, password):
         _users[username] = password
-        hooks.handle(hooks.user_added, username=username)
+        hooks.user_added.trigger(username=username)
 
 
     @hooks.user_added
@@ -38,7 +40,6 @@ introduce events and register hooks.
     @hooks.user_added
     def say_hi(username):
         print('Hi, {}'.format(username))
-
 
 Now you can *create* some users and let all listeners know about it:
 

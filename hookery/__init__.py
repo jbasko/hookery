@@ -7,9 +7,11 @@ except ImportError:
 
 
 class Event(object):
-    def __init__(self, name, register_hook_func, stop_condition=None):
+    def __init__(self, name, register_hook_func, trigger_func=None, stop_condition=None):
         self.name = name
-        self.register_hook_func = register_hook_func
+
+        self._register_hook_func = register_hook_func
+        self._trigger_func = trigger_func
 
         if stop_condition is None:
             self.stop_condition = lambda result: result is not None
@@ -19,41 +21,40 @@ class Event(object):
             self.stop_condition = lambda result, sc=stop_condition: result == sc
 
     def __call__(self, hook_func):
-        self.register_hook_func(self.name, hook_func)
+        self.register_hook(hook_func)
 
     def __repr__(self):
         return '<{} {!r}>'.format(self.__class__.__name__, self.name)
+
+    def register_hook(self, hook_func):
+        self._register_hook_func(self.name, hook_func)
+
+    def trigger(self, **kwargs):
+        self._trigger_func(self, **kwargs)
 
 
 class HookRegistry(object):
     def __init__(self, owner=None):
         self._owner = owner
 
-        self.hook_registered = Event('_hook_registered', self._register_internal_hook)
-
-        self._internal_hooks = collections.defaultdict(list)
-        self._internal_events = {
-            self.hook_registered.name: self.hook_registered,
-        }
-
         self._events = {}
         self._hooks = collections.defaultdict(list)
 
+        # Internal event names start with double underscore
+        self.hook_registered = self.register_event('__hook_registered')
+
     def register_event(self, name):
         assert name not in self._events
-        hook = Event(name, self.register_hook)
-        self._events[name] = hook
-        return hook
+        event = Event(name, register_hook_func=self.register_hook, trigger_func=self.handle)
+        self._events[name] = event
+        return event
 
     def register_hook(self, event, hook):
-        assert event in self._events
         assert callable(hook)
+        assert event in self._events
         self._hooks[event].append((signature(hook), hook))
-        self.handle('_hook_registered', event=self._events[event], hook=hook)
-
-    def _register_internal_hook(self, event, hook):
-        assert event in self._internal_events
-        self._internal_hooks[event].append((signature(hook), hook))
+        if not event.startswith('__'):
+            self.hook_registered.trigger(event=self._events[event], hook=hook)
 
     def handle(self, event_, **kwargs):
         if isinstance(event_, Event):
@@ -61,18 +62,11 @@ class HookRegistry(object):
         else:
             event_name = event_
 
-        if event_name.startswith('_'):
-            events_registry = self._internal_events
-            hooks_registry = self._internal_hooks
-        else:
-            events_registry = self._events
-            hooks_registry = self._hooks
-
-        event_ = events_registry[event_name]
+        event_ = self._events[event_name]
 
         result = None
 
-        for hook_signature, hook in hooks_registry[event_.name]:
+        for hook_signature, hook in self._hooks[event_.name]:
 
             # Collect kwargs which the hook is interested in.
             # If hook wants **kwargs, that means it is interested in all,

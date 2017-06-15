@@ -101,3 +101,27 @@ def test_hook_registered_hook():
         ('hook_registered', 'something_happened', 'first_hook'),
         ('hook_registered', 'something_happened', 'second_hook'),
     ]
+
+
+def test_hook_with_kwargs_gets_all_event_kwargs():
+    hooks = HookRegistry()
+    hooks.event1 = hooks.register_event('event1')
+
+    calls = []
+
+    @hooks.event1
+    def event1_handler1(**kwargs):
+        assert kwargs == {'a': 1,  'b': 2, 'c': 3, 'd': 4}
+        calls.append('handler1')
+
+    @hooks.event1
+    def event1_handler2(c, d):
+        assert c == 3
+        assert d == 4
+        calls.append('handler2')
+
+    assert len(calls) == 0
+
+    hooks.handle('event1', a=1, b=2, c=3, d=4)
+
+    assert len(calls) == 2

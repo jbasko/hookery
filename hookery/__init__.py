@@ -74,11 +74,20 @@ class HookRegistry(object):
 
         for hook_signature, hook in hooks_registry[event_.name]:
 
-            # Collect kwargs which the hook is interested in
-            hook_kwargs = {}
-            for param in kwargs:
-                if param in hook_signature.parameters:
-                    hook_kwargs[param] = kwargs[param]
+            # Collect kwargs which the hook is interested in.
+            # If hook wants **kwargs, that means it is interested in all,
+            # otherwise pass only the mentioned ones.
+
+            hook_kwargs = None
+            for _, param in hook_signature.parameters.items():
+                if param.kind == param.VAR_KEYWORD:
+                    hook_kwargs = kwargs
+
+            if hook_kwargs is None:
+                hook_kwargs = {}
+                for param in kwargs:
+                    if param in hook_signature.parameters:
+                        hook_kwargs[param] = kwargs[param]
 
             # Prepare args and kwargs for the hook
             bound_args = hook_signature.bind_partial(**hook_kwargs)

@@ -23,14 +23,14 @@ def test_register_event_returns_event():
     assert isinstance(event, Event)
 
 
-def test_register_hook_returns_hook_function():
+def test_register_hook_returns_what_equals_hook_function_itself():
     registry = HookRegistry()
     registry.register_event('a_event')
 
     def hook_func(x):
         return x
 
-    assert registry.register_hook('a_event', hook_func) is hook_func
+    assert registry.register_hook('a_event', hook_func) == hook_func
 
 
 def test_e2e():
@@ -201,3 +201,31 @@ def test_unregister_hook():
     a_event.trigger(id=4)
 
     assert calls == ['x1', 'y1', 'x2', 'y2', 'y3', 'y4']
+
+
+def test_registers_and_unregisters_hook_which_is_an_instance_method():
+    registry = HookRegistry()
+    registry.register_event('a_event')
+
+    class MyClass(object):
+        def hook_method(self):
+            pass
+
+    my_instance = MyClass()
+    registered_hook = registry.register_hook('a_event', my_instance.hook_method)
+    assert registered_hook == my_instance.hook_method
+
+    # But:
+    assert registered_hook is not my_instance.hook_method
+
+    assert len(registry['a_event']) == 1
+
+    # Try unregistered with what was returned by register_hook
+    registry.unregister_hook('a_event', registered_hook)
+    assert len(registry['a_event']) == 0
+
+    # Register again and unregister with the original method reference
+    registry.register_hook('a_event', my_instance.hook_method)
+    assert len(registry['a_event']) == 1
+    registry.unregister_hook('a_event', my_instance.hook_method)
+    assert len(registry['a_event']) == 0

@@ -69,7 +69,7 @@ class HookRegistry(object):
     def unregister_hook(self, event_name, hook):
         if isinstance(event_name, Event):
             event_name = event_name.name
-        self._hooks[event_name] = [h for h in self._hooks[event_name] if h[1] is not hook]
+        self._hooks[event_name] = [h for h in self._hooks[event_name] if h[1] != hook]
 
     def handle(self, event_, **kwargs):
         if isinstance(event_, Event):
@@ -109,3 +109,11 @@ class HookRegistry(object):
                 return result
 
         return result
+
+    def __getitem__(self, event):
+        """
+        Returns list of hooks registered for the specified event
+        """
+        if isinstance(event, Event):
+            event = event.name
+        return self._hooks[event]

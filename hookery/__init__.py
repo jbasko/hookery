@@ -59,15 +59,17 @@ class HookRegistry(object):
         # Internal event names start with double underscore
         self.hook_registered = self.register_event('__hook_registered')
 
-    def register_event(self, name):
-        assert name not in self._events
-        event = Event(
-            name=name,
-            register_func=self.register_hook,
-            trigger_func=self.dispatch_event,
-            unregister_func=self.unregister_hook,
-        )
+    def register_event(self, name, **kwargs):
+        if name in self._events:
+            raise ValueError('Event {!r} already registered'.format(name))
+
+        kwargs.setdefault('register_func', self.register_hook)
+        kwargs.setdefault('trigger_func', self.dispatch_event)
+        kwargs.setdefault('unregister_func', self.unregister_hook)
+
+        event = Event(name=name, **kwargs)
         self._events[name] = event
+
         return event
 
     def register_hook(self, event_name, hook):

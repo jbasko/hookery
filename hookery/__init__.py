@@ -7,12 +7,10 @@ except ImportError:
 
 
 class Event(object):
-    def __init__(self, name, register_hook_func, trigger_func=None, stop_condition=None):
+    def __init__(self, name, register_func=None, trigger_func=None, unregister_func=None, stop_condition=None):
         self.name = name
-
-        assert callable(register_hook_func)
-        self._register_hook_func = register_hook_func
-
+        self._register_func = register_func
+        self._unregister_func = unregister_func
         self._trigger_func = trigger_func
 
         if stop_condition is None:
@@ -29,14 +27,25 @@ class Event(object):
         return '<{} {!r}>'.format(self.__class__.__name__, self.name)
 
     def register_hook(self, hook_func):
-        registered_hook_func = self._register_hook_func(self.name, hook_func)
+        if not callable(self._register_func):
+            raise RuntimeError('Event {!r} does not support hook registration'.format(self.name))
+
+        registered_hook_func = self._register_func(self.name, hook_func)
         if not callable(registered_hook_func):
-            raise RuntimeError('Invalid register_hook_func for {!r}: it did not return the registered hook function')
+            raise RuntimeError(
+                'Invalid hook registration function {} - it did not return the hook'.format(self._register_func)
+            )
+
         return registered_hook_func
+
+    def unregister_hook(self, hook_func):
+        if not callable(self._unregister_func):
+            raise RuntimeError('Event {!r} does not support hook unregistration'.format(self.name))
+        return self._unregister_func(self.name, hook_func)
 
     def trigger(self, **kwargs):
         if self._trigger_func is None:
-            raise ValueError('{!r} cannot be triggered - it has no trigger_func'.format(self))
+            raise RuntimeError('Event {!r} cannot be triggered'.format(self.name))
         self._trigger_func(self, **kwargs)
 
 
@@ -52,7 +61,12 @@ class HookRegistry(object):
 
     def register_event(self, name):
         assert name not in self._events
-        event = Event(name, register_hook_func=self.register_hook, trigger_func=self.handle)
+        event = Event(
+            name=name,
+            register_func=self.register_hook,
+            trigger_func=self.dispatch_event,
+            unregister_func=self.unregister_hook,
+        )
         self._events[name] = event
         return event
 
@@ -69,9 +83,18 @@ class HookRegistry(object):
     def unregister_hook(self, event_name, hook):
         if isinstance(event_name, Event):
             event_name = event_name.name
-        self._hooks[event_name] = [h for h in self._hooks[event_name] if h[1] != hook]
 
-    def handle(self, event_, **kwargs):
+        remaining_hooks = []
+        for h_sig, h_func in self._hooks[event_name]:
+            if hook != h_func:
+                remaining_hooks.append((h_sig, h_func))
+
+        if len(remaining_hooks) == len(self._hooks[event_name]):
+            raise ValueError('Cannot unregister unknown hook {}'.format(hook))
+
+        self._hooks[event_name] = remaining_hooks
+
+    def dispatch_event(self, event_, **kwargs):
         if isinstance(event_, Event):
             event_name = event_.name
         else:

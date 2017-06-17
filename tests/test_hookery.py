@@ -1,10 +1,12 @@
 import time
 
+import pytest
+
 from hookery import HookRegistry, Event
 
 
 def test_event_is_a_decorator():
-    a_event = Event('a_event', register_hook_func=lambda event, hook: hook)
+    a_event = Event('a_event', register_func=lambda event, hook: hook)
 
     assert a_event.name == 'a_event'
     assert callable(a_event)
@@ -44,11 +46,11 @@ def test_e2e():
 
         def add(self, item):
             self._data.add(item)
-            self._hooks.handle(self.item_added, item=item, timestamp=time.time())
+            self._hooks.dispatch_event(self.item_added, item=item, timestamp=time.time())
 
         def remove(self, item):
             self._data.remove(item)
-            self._hooks.handle(self.item_removed, item=item, timestamp=time.time())
+            self._hooks.dispatch_event(self.item_removed, item=item, timestamp=time.time())
 
     bag = Collection()
 
@@ -152,7 +154,7 @@ def test_hook_with_kwargs_gets_all_event_kwargs():
 
     assert len(calls) == 0
 
-    hooks.handle('event1', a=1, b=2, c=3, d=4)
+    hooks.dispatch_event('event1', a=1, b=2, c=3, d=4)
 
     assert len(calls) == 2
 
@@ -229,3 +231,41 @@ def test_registers_and_unregisters_hook_which_is_an_instance_method():
     assert len(registry['a_event']) == 1
     registry.unregister_hook('a_event', my_instance.hook_method)
     assert len(registry['a_event']) == 0
+
+
+def test_unregister_hook_raises_exception_for_unknown_hooks():
+    registry = HookRegistry()
+    a_event = registry.register_event('a_event')
+
+    def hook():
+        pass
+
+    # Through registry
+
+    assert len(registry[a_event]) == 0
+
+    with pytest.raises(ValueError):
+        registry.unregister_hook(a_event, hook)
+
+    registry.register_hook(a_event, hook)
+    assert len(registry[a_event]) == 1
+
+    registry.unregister_hook(a_event, hook)
+    assert len(registry[a_event]) == 0
+
+    with pytest.raises(ValueError):
+        registry.unregister_hook(a_event, hook)
+
+    # Directly on event instance
+
+    with pytest.raises(ValueError):
+        a_event.unregister_hook(hook)
+
+    a_event.register_hook(hook)
+    assert len(registry[a_event]) == 1
+
+    a_event.unregister_hook(hook)
+    assert len(registry[a_event]) == 0
+
+    with pytest.raises(ValueError):
+        a_event.unregister_hook(hook)

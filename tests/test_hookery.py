@@ -169,12 +169,15 @@ def test_event_register_hook_and_trigger_methods():
     @event1
     def handle_event(id):
         calls.append(id)
+        return 'result{}'.format(id)
 
-    event1.trigger(id=1)
+    result = event1.trigger(id=1)
     assert calls == [1]
+    assert result == 'result1'
 
-    event1.trigger(id=2)
+    result = event1.trigger(id=2)
     assert calls == [1, 2]
+    assert result == 'result2'
 
 
 def test_unregister_hook():

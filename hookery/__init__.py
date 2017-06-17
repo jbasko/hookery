@@ -46,7 +46,7 @@ class Event(object):
     def trigger(self, **kwargs):
         if self._trigger_func is None:
             raise RuntimeError('Event {!r} cannot be triggered'.format(self.name))
-        self._trigger_func(self, **kwargs)
+        return self._trigger_func(self, **kwargs)
 
 
 class HookRegistry(object):

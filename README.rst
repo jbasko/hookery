@@ -37,7 +37,6 @@ your users to hook into, and expose them on your service class so that users can
 their hooks:
 
 .. code-block:: python
-    :emphasize-lines: 2, 8-10, 14, 18
 
     from hookery import HookRegistry
 

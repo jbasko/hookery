@@ -1,54 +1,45 @@
+# ------------------------------------------------------------------------
+# ThingsService is the API you want your users to be able to hook into
+# ------------------------------------------------------------------------
+
 from hookery import HookRegistry
 
 
 class ThingsService(object):
-    """
-    ThingsService is the corner stone of your API and you want
-    your users to be able to hook into it without extending the class.
-
-    What you do is you create an internal hook registry and register two events
-    that your API users can hook into:
-    - thing_added
-    - thing_removed
-
-    """
-
     def __init__(self):
         self._things = set()
+
         self._hooks = HookRegistry(self)
         self.thing_added = self._hooks.register_event('thing_added')
         self.thing_removed = self._hooks.register_event('thing_removed')
 
     def add(self, thing):
-        if thing not in self._things:
-            self._things.add(thing)
-            self.thing_added.trigger(thing=thing)
+        self._things.add(thing)
+        self.thing_added.trigger(things_service=self, thing=thing)
 
     def remove(self, thing):
-        if thing in self._things:
-            self._things.remove(thing)
-            self.thing_removed.trigger(thing=thing)
+        self._things.remove(thing)
+        self.thing_removed.trigger(things_service=self, thing=thing)
+
+# ------------------------------------------------------------------------
+# This is how you hook into the API:
+# ------------------------------------------------------------------------
+
+service = ThingsService()
 
 
-things = ThingsService()
-
-
-@things.thing_added
+@service.thing_added
 def added(thing):
-    print('{} was just added'.format(thing))
+    print('{} was added'.format(thing))
 
 
-@things.thing_removed
-def removed(thing):
-    print('{} was just removed'.format(thing))
+@service.thing_removed
+def removed(thing, things_service):
+    print('{} was removed, {} things remain'.format(thing, len(things_service._things)))
 
 
-if __name__ == '__main__':
-    things.add(1)
-    things.add(22)
-    things.add(22)
-    things.add(22)
-    things.add(333)
+service.add(1)
+service.add(2)
+service.add(3)
 
-    things.remove(4)
-    things.remove(22)
+service.remove(2)

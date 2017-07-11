@@ -104,6 +104,9 @@ class HookRegistry(object):
 
         event_ = self._events[event_name]
 
+        kwargs.setdefault('event', event_)
+        kwargs.setdefault('event_', event_)
+
         result = None
 
         for hook_signature, hook in self._hooks[event_.name]:

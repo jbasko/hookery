@@ -143,7 +143,7 @@ def test_hook_with_kwargs_gets_all_event_kwargs():
 
     @hooks.event1
     def event1_handler1(**kwargs):
-        assert kwargs == {'a': 1,  'b': 2, 'c': 3, 'd': 4}
+        assert kwargs == {'a': 1,  'b': 2, 'c': 3, 'd': 4, 'event': hooks.event1, 'event_': hooks.event1}
         calls.append('handler1')
 
     @hooks.event1
@@ -272,3 +272,44 @@ def test_unregister_hook_raises_exception_for_unknown_hooks():
 
     with pytest.raises(ValueError):
         a_event.unregister_hook(hook)
+
+
+def test_event_arg_is_auto_populated_with_event_instance():
+    registry = HookRegistry()
+    calls = []
+
+    e1 = registry.register_event('e1')
+    e2 = registry.register_event('e2')
+
+    def cb1(event):
+        calls.append(event)
+
+    def cb2(event_):
+        calls.append(event_)
+
+    def cb3(event, event_):
+        calls.append([event, event_])
+
+    e1.register_hook(cb1)
+    e1.register_hook(cb2)
+    e1.register_hook(cb3)
+
+    e2.register_hook(cb1)
+    e2.register_hook(cb2)
+    e2.register_hook(cb3)
+
+    e1.trigger()
+    assert len(calls) == 3
+    assert calls[-3:] == [e1, e1, [e1, e1]]
+
+    e2.trigger()
+    assert len(calls) == 6
+    assert calls[-3:] == [e2, e2, [e2, e2]]
+
+    e1.trigger(event='haha')
+    assert len(calls) == 9
+    assert calls[-3:] == ['haha', e1, ['haha', e1]]
+
+    e2.trigger(event='haha')
+    assert len(calls) == 12
+    assert calls[-3:] == ['haha', e2, ['haha', e2]]

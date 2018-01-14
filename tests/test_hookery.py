@@ -313,21 +313,3 @@ def test_event_arg_is_auto_populated_with_event_instance():
     e2.trigger(event='haha')
     assert len(calls) == 12
     assert calls[-3:] == ['haha', e2, ['haha', e2]]
-
-
-def test_can_customise_event_cls():
-    calls = []
-
-    class CustomEvent(Event):
-        pass
-
-    reg = HookRegistry(event_cls=CustomEvent)
-    e1 = reg.register_event('e1')
-    assert isinstance(e1, CustomEvent)
-
-    @e1
-    def listener(*args, **kwargs):
-        calls.append((args, kwargs))
-
-    e1.trigger()
-    assert len(calls) == 1

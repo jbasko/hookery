@@ -1,4 +1,4 @@
-__version__ = '1.3.0'
+__version__ = '1.4.0'
 
 import collections
 
@@ -71,7 +71,12 @@ class HookRegistry(object):
         kwargs.setdefault('trigger_func', self.dispatch_event)
         kwargs.setdefault('unregister_func', self.unregister_hook)
 
-        event = self._event_cls(name=name, **kwargs)
+        event_cls = kwargs.pop('event_cls', self._event_cls)
+        event = event_cls(name=name, **kwargs)
+
+        # Make sure the event will be recognised by the registry
+        assert self.is_event_instance(event)
+
         self._events[name] = event
 
         return event

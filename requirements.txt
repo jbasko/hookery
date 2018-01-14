@@ -4,6 +4,7 @@ funcsigs
 # Development-only
 #
 bumpversion==0.5.3
+coverage
 flake8
 isort
 pytest

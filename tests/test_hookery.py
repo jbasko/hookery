@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from hookery import HookRegistry, Event
+from hookery import Event, HookRegistry
 
 
 def test_event_is_a_decorator():
@@ -14,7 +14,7 @@ def test_event_is_a_decorator():
     def f1():
         pass
 
-    f2 = lambda x: x
+    f2 = lambda x: x  # noqa
 
     assert a_event(f1) is f1
     assert a_event(f2) is f2
@@ -57,20 +57,20 @@ def test_e2e():
     calls = []
 
     @bag.item_added
-    def item_added(item, timestamp):
+    def item_added1(item, timestamp):
         assert isinstance(timestamp, float)
         assert item == 'hello'
         calls.append('first')
 
     @bag.item_added
-    def item_added(timestamp, item):
+    def item_added2(timestamp, item):
         assert isinstance(timestamp, float)
         assert item == 'hello'
         calls.append('second')
         return True
 
     @bag.item_added
-    def item_added(timestamp, item):
+    def item_added3(timestamp, item):
         assert isinstance(timestamp, float)
         assert item == 'hello'
         calls.append('third')
@@ -143,7 +143,7 @@ def test_hook_with_kwargs_gets_all_event_kwargs():
 
     @hooks.event1
     def event1_handler1(**kwargs):
-        assert kwargs == {'a': 1,  'b': 2, 'c': 3, 'd': 4, 'event': hooks.event1, 'event_': hooks.event1}
+        assert kwargs == {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'event': hooks.event1, 'event_': hooks.event1}
         calls.append('handler1')
 
     @hooks.event1
@@ -313,3 +313,21 @@ def test_event_arg_is_auto_populated_with_event_instance():
     e2.trigger(event='haha')
     assert len(calls) == 12
     assert calls[-3:] == ['haha', e2, ['haha', e2]]
+
+
+def test_can_customise_event_cls():
+    calls = []
+
+    class CustomEvent(Event):
+        pass
+
+    reg = HookRegistry(event_cls=CustomEvent)
+    e1 = reg.register_event('e1')
+    assert isinstance(e1, CustomEvent)
+
+    @e1
+    def listener(*args, **kwargs):
+        calls.append((args, kwargs))
+
+    e1.trigger()
+    assert len(calls) == 1

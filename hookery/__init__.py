@@ -1,3 +1,5 @@
+__version__ = '1.3.0'
+
 import collections
 
 try:
@@ -50,9 +52,11 @@ class Event(object):
 
 
 class HookRegistry(object):
-    def __init__(self, owner=None):
-        self._owner = owner
+    _event_cls = Event
 
+    def __init__(self, owner=None, event_cls=None):
+        self._event_cls = event_cls or self._event_cls
+        self._owner = owner
         self._events = {}
         self._hooks = collections.defaultdict(list)
 
@@ -61,20 +65,23 @@ class HookRegistry(object):
 
     def register_event(self, name, **kwargs):
         if name in self._events:
-            raise ValueError('Event {!r} already registered'.format(name))
+            raise ValueError('{} {!r} already registered'.format(self._event_cls.__name__, name))
 
         kwargs.setdefault('register_func', self.register_hook)
         kwargs.setdefault('trigger_func', self.dispatch_event)
         kwargs.setdefault('unregister_func', self.unregister_hook)
 
-        event = Event(name=name, **kwargs)
+        event = self._event_cls(name=name, **kwargs)
         self._events[name] = event
 
         return event
 
+    def is_event_instance(self, event):
+        return isinstance(event, Event) or isinstance(event, self._event_cls)
+
     def register_hook(self, event_name, hook):
         assert callable(hook)
-        if isinstance(event_name, Event):
+        if self.is_event_instance(event_name):
             event_name = event_name.name
         assert event_name in self._events
         self._hooks[event_name].append((signature(hook), hook))
@@ -83,7 +90,7 @@ class HookRegistry(object):
         return hook
 
     def unregister_hook(self, event_name, hook):
-        if isinstance(event_name, Event):
+        if self.is_event_instance(event_name):
             event_name = event_name.name
 
         remaining_hooks = []
@@ -97,7 +104,7 @@ class HookRegistry(object):
         self._hooks[event_name] = remaining_hooks
 
     def dispatch_event(self, event_, **kwargs):
-        if isinstance(event_, Event):
+        if self.is_event_instance(event_):
             event_name = event_.name
         else:
             event_name = event_
@@ -142,6 +149,6 @@ class HookRegistry(object):
         """
         Returns list of hooks registered for the specified event
         """
-        if isinstance(event, Event):
+        if self.is_event_instance(event):
             event = event.name
         return self._hooks[event]

@@ -1,5 +1,11 @@
 funcsigs
 
+#
+# Development-only
+#
+bumpversion==0.5.3
+flake8
+isort
 pytest
 pytest-random-order
 tox

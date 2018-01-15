@@ -1,4 +1,4 @@
-from hookery import Event, HookRegistry
+from hookery.v1 import Event, HookRegistry
 
 
 def test_registry_wide_event_cls():

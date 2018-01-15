@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from hookery import Event, HookRegistry
+from hookery.v1 import Event, HookRegistry
 
 
 def test_event_is_a_decorator():

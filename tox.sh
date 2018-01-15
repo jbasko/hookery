@@ -16,11 +16,5 @@ export PYENV_VERSION=hookery-35
 pip install -r requirements.txt
 tox -e py35
 
-# Test with Python 2.7
-export PYENV_VERSION=hookery-27
-pip install -r requirements.txt
-tox -e py27
-
-
 # Set back to current Python
 export PYENV_VERSION=${original_pyenv}

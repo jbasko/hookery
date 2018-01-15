@@ -1,4 +1,4 @@
-__version__ = '2.2.1'
+__version__ = '2.2.2'
 
 from .v2 import Event, EventListener, Registry
 

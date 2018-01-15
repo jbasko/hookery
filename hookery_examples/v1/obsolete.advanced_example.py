@@ -9,7 +9,7 @@ Running this module will print the following to stdout::
 
 """
 
-from hookery import HookRegistry
+from hookery.v1 import HookRegistry
 
 hooks = HookRegistry()
 

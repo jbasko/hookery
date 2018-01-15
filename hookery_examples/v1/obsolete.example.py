@@ -2,7 +2,7 @@
 # ThingsService is the API you want your users to be able to hook into
 # ------------------------------------------------------------------------
 
-from hookery import HookRegistry
+from hookery.v1 import HookRegistry
 
 
 class ThingsService(object):

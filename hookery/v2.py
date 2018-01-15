@@ -60,6 +60,9 @@ class EventListener:
         func_kwargs = {k: v for k, v in kwargs.items() if k in self.func_sig.parameters}
         return self.func(**func_kwargs)
 
+    def __repr__(self):
+        return '<{} {!r}>'.format(self.__class__.__name__, self.func.__name__)
+
 
 class Event:
     event_listener_cls = EventListener
@@ -81,6 +84,9 @@ class Event:
         event_listener = self.event_listener_cls(func=func, predicate=predicate)
         self.listeners.append(event_listener)
         return event_listener
+
+    def __repr__(self):
+        return '<{} {!r}>'.format(self.__class__.__name__, self.name)
 
 
 Registry.event_cls = Event

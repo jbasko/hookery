@@ -13,6 +13,18 @@ def dummy_event_one(registry):
     return registry.register_event('dummy_event_one')
 
 
+def test_event_repr(dummy_event_one):
+    assert repr(dummy_event_one) == "<Event 'dummy_event_one'>"
+
+
+def test_event_listener_repr(dummy_event_one):
+    @dummy_event_one.listener
+    def listener():
+        pass
+
+    assert repr(listener) == "<EventListener 'listener'>"
+
+
 def test_default_event_cls_is_event():
     assert Registry.event_cls is Event
 

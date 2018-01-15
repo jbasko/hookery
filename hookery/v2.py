@@ -81,3 +81,6 @@ class Event:
         event_listener = self.event_listener_cls(func=func, predicate=predicate)
         self.listeners.append(event_listener)
         return event_listener
+
+
+Registry.event_cls = Event

@@ -13,6 +13,10 @@ def dummy_event_one(registry):
     return registry.register_event('dummy_event_one')
 
 
+def test_default_event_cls_is_event():
+    assert Registry.event_cls is Event
+
+
 def test_registry_has_event_cls_set(registry: Registry):
     assert registry.event_cls is Event
 

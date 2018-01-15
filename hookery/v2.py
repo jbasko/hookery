@@ -32,6 +32,11 @@ class EventListener:
         self._func_sig = None
         self._predicate_sig = None
 
+        if hasattr(self.func, '__name__'):
+            self.__name__ = self.func.__name__
+        else:
+            self.__name__ = str(self.func)
+
     @property
     def func_sig(self) -> inspect.Signature:
         if self._func_sig is None and self.func is not None:
@@ -61,7 +66,7 @@ class EventListener:
         return self.func(**func_kwargs)
 
     def __repr__(self):
-        return '<{} {!r}>'.format(self.__class__.__name__, self.func.__name__)
+        return '<{} {!r}>'.format(self.__class__.__name__, self.__name__)
 
 
 class Event:

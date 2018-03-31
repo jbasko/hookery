@@ -1,9 +1,12 @@
-__version__ = '2.2.2'
+__version__ = '3.0.0'
 
-from .v2 import Event, EventListener, Registry
+from .base import ClassHook, GlobalHook, Handler, Hook, InstanceHook, hookable
 
 __all__ = [
-    'Event',
-    'EventListener',
-    'Registry',
+    'ClassHook',
+    'GlobalHook',
+    'Handler',
+    'Hook',
+    'InstanceHook',
+    'hookable',
 ]

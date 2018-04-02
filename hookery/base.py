@@ -69,16 +69,16 @@ class Hook:
         self.subject = subject if subject is not None else NoSubject()
 
         # Hook associated with the parent class of the class which is this hook's subject
-        self.parent_class_hook = parent_class_hook
+        self.parent_class_hook = parent_class_hook  # type: Hook
 
         # Hook associated with the class of the instance which is this hook's subject
-        self.instance_class_hook = instance_class_hook
+        self.instance_class_hook = instance_class_hook  # type: Hook
 
         # Class in which the hook was defined.
-        self.defining_class = defining_class
+        self.defining_class = defining_class  # type: type
 
         # If a hook is marked as single handler, only its last registered handler will be called on trigger.
-        self.single_handler = single_handler
+        self.single_handler = single_handler  # type: bool
 
         self._direct_handlers = []
         self._cached_handlers = None
@@ -133,6 +133,26 @@ class Hook:
         self._direct_handlers.append(handler)
         self._cached_handlers = None
         return handler
+
+    def unregister_handler(self, handler):
+        """
+        Remove the handler from this hook's list of handlers.
+        This does not give up until the handler is found in the class hierarchy.
+        """
+        if handler in self._direct_handlers:
+            self._direct_handlers.remove(handler)
+            self._cached_handlers = None
+
+        elif self.parent_class_hook is not None and handler in self.parent_class_hook.handlers:
+            self.parent_class_hook.unregister_handler(handler)
+            self._cached_handlers = None
+
+        elif self.instance_class_hook is not None and handler in self.instance_class_hook.handlers:
+            self.instance_class_hook.unregister_handler(handler)
+            self._cached_handlers = None
+
+        else:
+            raise ValueError('{} is not a registered handler of {}'.format(handler, self))
 
     def __bool__(self):
         return bool(self.handlers)
@@ -274,6 +294,22 @@ class HookableMeta(type):
                 if isinstance(v, Handler) and isinstance(getattr(parent, k, None), Hook):
                     raise RuntimeError('{}.{} (handler) overwrites hook with the same name'.format(name, k))
 
+        # Find handlers registered in the class against parent class's hooks.
+        # We interpret it as attempt to register handlers for current class hook not for parent class hook.
+
+        hookable_parent = None
+        handlers_registered_with_parent_class_hook = []
+        for base in bases:
+            if issubclass(base, Hookable):
+                hookable_parent = base
+        if hookable_parent is not None:
+            for k, v in list(dct.items()):
+                if isinstance(v, Handler):
+                    parent_hook = getattr(hookable_parent, v.hook_name, None)  # type: Hook
+                    if parent_hook is not None and v in parent_hook.handlers:
+                        parent_hook.unregister_handler(v)
+                        handlers_registered_with_parent_class_hook.append((v.hook_name, v._original_func))
+
         hook_definitions = []
 
         for k, v in list(dct.items()):
@@ -287,6 +323,9 @@ class HookableMeta(type):
 
         for k, v in hook_definitions:
             setattr(cls, k, HookDescriptor(defining_hook=v, defining_class=cls))
+
+        for k, v in handlers_registered_with_parent_class_hook:
+            getattr(cls, k)(v)
 
         return cls
 

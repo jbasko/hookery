@@ -72,4 +72,4 @@ Any function or generator function can be registered as a handler.
 If a handler is a generator function, it will be fully consumed on hook trigger and all the values
 it yields will be returned as a list.
 
-Functions decorated with ``@classmethod`` and ``@staticmethod`` cannot be registered as handlers (*YET*).
+Functions decorated with ``@classmethod`` and ``@staticmethod`` cannot be registered as handlers.

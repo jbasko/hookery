@@ -47,13 +47,19 @@ will be called.
 Hookable Class
 --------------
 
-Any class can be marked as hookable by decorating it with ``@hookable`` decorator. The decorator itself
-doesn't do anything unless the class declares, as class attributes, some hooks (instances of ``Hook``).
+Any class can be marked as hookable either by decorating it with ``@hookable`` decorator, extending ``Hookable``, or
+setting its metaclass to ``HookableMeta``.
 
-Classes derived from a hookable class are hookable too, but only as long as they don't declare
-any new hooks. If a derived class declares a hook, the derived class must also be decorated with ``@hookable``
-for the new hooks to be initialised properly.
+The recommended method is the ``@hookable`` decorator.
 
+Classes derived from a hookable class are also hookable.
+
+.. code-block:: python
+
+    @hookable
+    class Request:
+        before = InstanceHook()
+        after = InstanceHook()
 
 Single-Handler Hooks
 --------------------
@@ -76,6 +82,21 @@ Any function or generator function can be registered as a handler.
 
 If a handler is a generator function, it will be fully consumed on hook trigger and all the values
 it yields will be returned as a list.
+
+.. code-block:: python
+
+    on_application_shutdown = GlobalHook()
+
+    @on_application_shutdown
+    def say_bye(user):
+        print('Bye {}!'.format(user))
+
+Handlers can specify arguments they expect and they don't have to match the arguments with which
+the hook is triggered -- only the requested arguments will be supplied.
+
+.. code-block:: python
+
+    on_application_shutdown.trigger(greeting='Good bye {}', user='M. A.')
 
 Functions decorated with ``@classmethod`` and ``@staticmethod`` cannot be registered as handlers.
 

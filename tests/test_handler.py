@@ -1,21 +1,20 @@
 import inspect
 
-from hookery.base import Handler
+from hookery.base import GlobalHook, Handler, InstanceHook
 
 
 def test_handler_from_func():
     def f(a, b):
         return a - b
 
-    h = Handler(f, 'hook1')
+    h = Handler(f, GlobalHook('hook1'))
     assert callable(h)
     assert h.__name__ == 'f'
     assert h.name == 'f'
     assert h.hook_name == 'hook1'
     assert not h.is_generator
     assert h(c=8, b=10, a=25) == 15
-    assert h.get_result(b=5, a=10) == 5
-    assert h.get_result(10, 5) == 5
+    assert h(b=5, a=10) == 5
 
 
 def test_handler_from_generator():
@@ -23,9 +22,22 @@ def test_handler_from_generator():
         yield 2 * a
         yield 3 * b
 
-    h = Handler(g, 'hook2')
-    assert h.hook_name == 'hook2'
-    assert h.is_generator
-    assert inspect.isgenerator(h())
-    assert list(h(5, 6)) == [10, 18]
-    assert h.get_result(5, 6) == [10, 18]
+    hook2 = GlobalHook('hook2')
+    handler = Handler(g, hook2)
+    assert handler.hook_name == 'hook2'
+    assert handler.is_generator
+    assert inspect.isgenerator(handler())
+    assert list(handler(a=5, b=6)) == [10, 18]
+    assert hook2.get_result_from_handler(handler, a=5, b=6) == [10, 18]
+
+
+def test_instance_hook_handler_from_bound_method():
+    class C:
+        def parse(self, value):
+            assert isinstance(self, C)
+            return value * 5
+
+    hook = InstanceHook('before')
+    handler = Handler(C().parse, hook=hook)
+    assert handler(value=6) == 30
+    assert hook.get_result_from_handler(handler, value=6) == 30

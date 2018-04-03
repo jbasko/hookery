@@ -63,6 +63,11 @@ By default, a hook can have an unlimited number of handlers, and results from al
 when the hook is triggered. The results are then returned as a list. But for a single-handler hook, ``trigger()``
 will only call the last handler and return result as is. If there is no handler registered, ``None`` will be returned.
 
+If the majority of your hooks are single-handler hooks instance hooks for which you register handlers in class
+body then you are probably misusing hooks. A single-handler hook in such scenario is clearer to express
+as a just a normal instance method. Hooks are simpler to use than methods if handlers need to be attached directly
+to instances.
+
 
 Handlers
 --------

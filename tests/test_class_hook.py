@@ -90,3 +90,43 @@ def test_hook_is_protected_from_accidental_overwrite_by_same_name_handler():
             @B.before
             def before(self):
                 pass
+
+
+def test_trigger_only_accepts_kwargs():
+    @hookable
+    class B:
+        before = ClassHook()
+
+    B.before.trigger(a=1)
+    B.before.trigger(a=1, b=2)
+
+    with pytest.raises(TypeError):
+        B.before.trigger(1, 2)
+
+    with pytest.raises(TypeError):
+        B.before.trigger(1)
+
+    with pytest.raises(TypeError):
+        B.before.trigger(None)
+
+
+def test_cls_is_passed_to_class_hooks():
+    @hookable
+    class B:
+        before = ClassHook()
+
+    class C(B):
+        @B.before
+        def on_before1(cls):
+            return cls
+
+        @B.before
+        def on_before2(cls, x):
+            return x
+
+    class D(C):
+        pass
+
+    assert B.before.trigger(x=5) == []
+    assert C.before.trigger(x=5) == [C, 5]
+    assert D.before.trigger(x=5) == [D, 5]

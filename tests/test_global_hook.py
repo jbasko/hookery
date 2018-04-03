@@ -39,3 +39,19 @@ def test_single_handler_hook():
 
     before(lambda: 2)
     assert before.trigger() == 2
+
+
+def test_trigger_only_accepts_kwargs():
+    before = GlobalHook('before')
+
+    before.trigger(a=1)
+    before.trigger(a=1, b=2)
+
+    with pytest.raises(TypeError):
+        before.trigger(1, 2)
+
+    with pytest.raises(TypeError):
+        before.trigger(1)
+
+    with pytest.raises(TypeError):
+        before.trigger(None)

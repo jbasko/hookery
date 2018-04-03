@@ -23,7 +23,7 @@ def test_direct_descendant():
     assert not Field().parser
     assert Integer().parser
 
-    assert Integer().parser.trigger('55') == 55
+    assert Integer().parser.trigger(value='55') == 55
 
 
 def test_further_descendant():
@@ -32,19 +32,22 @@ def test_further_descendant():
         parser = InstanceHook(single_handler=True)
 
     class Integer(Field):
-        pass
-
-    class PositiveInteger(Integer):
         @Field.parser
         def parser1(self, value):
             return int(value)
 
+    class BetterInteger(Integer):
+        pass
+
+    class PositiveInteger(BetterInteger):
         @Integer.parser
         def parser2(self, value):
             return abs(int(value))
 
     assert not Field.parser
-    assert not Integer.parser
-    assert PositiveInteger.parser
 
-    assert PositiveInteger().parser.trigger('-55') == 55
+    assert Integer.parser
+    assert Integer().parser.trigger(value='-55') == -55
+
+    assert PositiveInteger.parser
+    assert PositiveInteger().parser.trigger(value='-55') == 55

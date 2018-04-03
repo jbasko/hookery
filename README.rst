@@ -8,6 +8,67 @@ Trivial, primitive, naive, and optimistic hooks in Python 3.5+.
 
     pip install hookery
 
+Example
+-------
+
+This demonstrates a hookable class ``Field`` with one hook ``mapper`` which can be used to customise
+mapping of a field from a source dictionary to a target dictionary.
+
+If someone wants to extend the functionality of ``Field`` class they would either register handlers
+on concrete instances of ``Field`` like ``validate_height`` which is registered with ``height`` field,
+or with classes like ``Field.default_mapper``, ``source_printer``, and ``Integer.to_int``.
+
+.. code-block:: python
+
+    from hookery import hookable, InstanceHook
+
+
+    @hookable
+    class Field:
+        mapper = InstanceHook()
+
+        @mapper
+        def default_mapper(self, source, target):
+            target[self.name] = source.get(self.name, None)
+
+        def __init__(self, name):
+            self.name = name
+
+        def map(self, source, target=None):
+            if target is None:
+                target = {}
+            self.mapper.trigger(field=self, source=source, target=target)
+            return target
+
+
+    @Field.mapper
+    def source_printer(source):
+        print('source:', source)
+
+
+    class Integer(Field):
+
+        @Field.mapper
+        def to_int(self, target):
+            target[self.name] = int(target[self.name]) if target[self.name] is not None else None
+
+
+    height = Integer('height')
+
+
+    @height.mapper
+    def validate_height(field, target):
+        if target[field.name] > 250:
+            raise ValueError((field.name, target[field.name]))
+
+    print(height.map({'height': '165'}))
+
+
+----
+
+Introduction
+------------
+
 
 A **hookable** is something that one can hook into (onto, around, or about) using **hooks**.
 This something is usually an algorithm, a strategy of some sort;

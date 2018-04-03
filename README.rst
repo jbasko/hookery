@@ -78,3 +78,56 @@ If a handler is a generator function, it will be fully consumed on hook trigger 
 it yields will be returned as a list.
 
 Functions decorated with ``@classmethod`` and ``@staticmethod`` cannot be registered as handlers.
+
+----
+
+
+Feature Markers in Code
+-----------------------
+
+There are some features which are hard to explain without an example and which require handling in multiple
+places in code and documenting each place with an example would be a nightmare.
+Instead we use the following markers to decode which feature is being implemented.
+
+**[H001]**
+
+Even though ``on_before`` is decorated with ``@Request.before``, the handler is registered
+only with ``SafeRequest.before``.
+
+.. code-block:: python
+
+    @hookable
+    class Request:
+        before = InstanceHook()
+
+
+    class SafeRequest(Request)
+        @Request.before
+        def on_before():
+            pass
+
+**[H002]**
+
+.. code-block:: python
+
+    @hookable
+    class Field:
+        parser = InstanceHook()
+
+        @parser
+        def parse_value(self, value):
+            return int(value)
+
+If a hook is declared in the same class body in which it is used to register a handler, then
+we need to take special care as ``parser`` is not associated with the containing ``Field`` class yet.
+
+
+**[H003]**
+
+Passing of ``self`` and ``cls`` to handlers.
+
+When handlers are registered in class declarations by decorating functions what normally would be
+instance methods, the hook sees them just as ordinary functions that perhaps take ``self`` or ``cls``
+as first argument. The actual handler being registered is NOT a bound method. Binding happens during
+hook triggering. Passing ``self=`` and ``cls=`` as keyword-arguments is problematic because they would
+be inadvertently consumed by *hookery's* internals.

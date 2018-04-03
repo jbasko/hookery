@@ -21,6 +21,7 @@ class Handler:
         self.is_generator = inspect.isgeneratorfunction(func)
 
     def __call__(self, *, _handler_context=None, **kwargs):
+        # [H003]
         # _handler_context is how "self" and "cls" can be passed to handler function
         # without being consumed by hookery's implementation.
         _handler_context = _handler_context or {}
@@ -154,6 +155,7 @@ class Hook:
 
     def call_handler(self, handler, **kwargs):
         """
+        [H003]
         Call handler correctly by passing the right handler context.
         If you call handler directly, you are responsible for passing the right "self" and "cls"
         values (if required) which can only be done via _handler_context kwarg as otherwise
@@ -168,8 +170,8 @@ class Hook:
 
     def get_result_from_handler(self, handler, **kwargs):
         """
+        [H003]
         Get result from handler correctly by passing the right handler context.
-        See call_handler.
         """
         result = self.call_handler(handler, **kwargs)
         if handler.is_generator:
@@ -241,7 +243,17 @@ class HookDescriptor:
     def create_hook(self, **kwargs):
         kwargs.setdefault('name', self.name)
         kwargs.setdefault('defining_class', self.defining_class)
-        return self.hook_cls(**kwargs)
+        hook = self.hook_cls(**kwargs)
+
+        # [H002]
+        # copy the handlers from the defining hook -- if handlers are registered
+        # right next to the hook declaration in a class body then these handlers
+        # would otherwise be lost because of the Hook -> HookDescriptor -> Hook overwrite.
+        if hook.is_class_associated:
+            for handler in self.defining_hook._direct_handlers:
+                hook.register_handler(handler._original_func)
+
+        return hook
 
     def __str__(self):
         return '<{} {!r}>'.format(self.__class__.__name__, self.name)
@@ -294,6 +306,11 @@ class InstanceHook(Hook):
     """
 
     def trigger(self, **kwargs):
+        if not self.defining_class:
+            raise RuntimeError((
+                'Did you forget to decorate your hookable class? {} is not initialised properly.'
+            ).format(self))
+
         if not self.is_instance_associated:
             raise TypeError('Incorrect usage of {}'.format(self))
 
@@ -305,7 +322,9 @@ class InstanceHook(Hook):
 class HookableMeta(type):
     @classmethod
     def __prepare__(meta, name, bases):
-        # This is to preserve the class attribute declaration order in Python 3.5
+        # If you register multiple attributes of a class as handlers of the same hook within the same class body then
+        # their order must be preserved.
+        # This method is required only for Python 3.5.
         return collections.OrderedDict()
 
     def __new__(meta, name, bases, dct):
@@ -315,9 +334,9 @@ class HookableMeta(type):
                 if isinstance(v, Handler) and isinstance(getattr(parent, k, None), Hook):
                     raise RuntimeError('{}.{} (handler) overwrites hook with the same name'.format(name, k))
 
+        # [H001]
         # Find handlers registered in the class against parent class's hooks.
         # We interpret it as attempt to register handlers for current class hook not for parent class hook.
-
         hookable_parent = None
         handlers_registered_with_parent_class_hook = []
         for base in bases:
@@ -326,6 +345,11 @@ class HookableMeta(type):
         if hookable_parent is not None:
             for k, v in list(dct.items()):
                 if isinstance(v, Handler):
+                    if not v.hook_name:
+                        # [H002]
+                        # Ignore the handlers that are registered against just-declared hooks who
+                        # don't have name set yet.
+                        continue
                     parent_hook = getattr(hookable_parent, v.hook_name, None)  # type: Hook
                     if parent_hook is not None and v in parent_hook.handlers:
                         parent_hook.unregister_handler(v)

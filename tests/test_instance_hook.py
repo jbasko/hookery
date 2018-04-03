@@ -94,7 +94,7 @@ def test_trigger_only_accepts_kwargs():
         C().before.trigger(None)
 
 
-def test_self_auto_populated_for_instance_hook():
+def test_self_is_populated_for_instance_hook():
     @hookable
     class C:
         before = InstanceHook()

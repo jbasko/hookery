@@ -38,3 +38,53 @@ def test_hook_can_be_overwritten_by_another_hook():
         pass
 
     assert D.before.parent_class_hook is C.before
+
+
+def test_hook_in_same_class_where_it_is_declared():
+    @hookable
+    class B:
+        before = InstanceHook()
+        after = ClassHook()
+
+        @before
+        def on_before(self, x):
+            assert isinstance(self, B)
+            return x * 3
+
+        @after
+        def on_after(cls, y):
+            assert cls is B
+            return y * 5
+
+    assert len(B.before.handlers) == 1
+
+    assert B().before
+    assert B.after
+
+    assert B().before.trigger(x=20, y=10) == [60]
+    assert B.after.trigger(x=20, y=10) == [50]
+
+    # In a derived class the logic is different so must test that too:
+
+    class C(B):
+        between = InstanceHook()
+        betwixt = ClassHook()
+
+        @between
+        def on_between(self, x):
+            assert isinstance(self, C)
+            return x * 4
+
+        @betwixt
+        def on_betwixt(cls, y):
+            assert cls is C
+            return y * 6
+
+    assert C().between
+    assert C.betwixt
+
+    # c00 = C()
+    # assert c00.between.subject is c00
+
+    assert C().between.trigger(x=20, y=10) == [80]
+    assert C.betwixt.trigger(x=20, y=10) == [60]

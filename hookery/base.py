@@ -16,6 +16,17 @@ class Handler:
         self.__name__ = func.__name__
         self.name = func.__name__
         self.hook_name = hook.name
+
+        if hook.args:
+            func_sig = inspect.signature(func)
+            for param in func_sig.parameters:
+                if param in ('self', 'cls'):
+                    continue
+                if param not in hook.args:
+                    raise RuntimeError('{} is not a valid handler for {}, argument {!r} is not supported'.format(
+                        func, hook, param
+                    ))
+
         self._original_func = func
         self._optional_args_func = optional_args_func(self._original_func)
         self.is_generator = inspect.isgeneratorfunction(func)
@@ -60,6 +71,7 @@ class Hook:
         self, name=None, subject=None,
         parent_class_hook=None, instance_class_hook=None, single_handler=False,
         defining_class=None,
+        args=None,
     ):
         if self.__class__ is Hook:
             raise TypeError('{} instances should not be created, choose one of the flavours'.format(Hook))
@@ -78,6 +90,8 @@ class Hook:
 
         # If a hook is marked as single handler, only its last registered handler will be called on trigger.
         self.single_handler = single_handler  # type: bool
+
+        self.args = tuple(args) if args else ()
 
         self._direct_handlers = []
         self._cached_handlers = None
@@ -243,6 +257,7 @@ class HookDescriptor:
     def create_hook(self, **kwargs):
         kwargs.setdefault('name', self.name)
         kwargs.setdefault('defining_class', self.defining_class)
+        kwargs.setdefault('args', self.defining_hook.args)
         hook = self.hook_cls(**kwargs)
 
         # [H002]

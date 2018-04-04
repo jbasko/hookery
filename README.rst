@@ -25,7 +25,7 @@ or with classes like ``Field.default_mapper``, ``source_printer``, and ``Integer
 
     @hookable
     class Field:
-        mapper = InstanceHook()
+        mapper = InstanceHook(args=('field', 'source', 'target'))
 
         @mapper
         def default_mapper(self, source, target):

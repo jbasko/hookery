@@ -107,3 +107,24 @@ def test_self_is_populated_for_instance_hook():
 
     d = D()
     assert d.before.trigger(x=5) == [15]
+
+
+def test_strict_args():
+    @hookable
+    class C:
+        before = InstanceHook(args=['x', 'y'])
+
+    assert C.before.args == ('x', 'y')
+    assert C().before.args == ('x', 'y')
+
+    C.before(lambda: None)
+    C.before(lambda self: None)
+    C.before(lambda self, x: None)
+    C.before(lambda self, x, y: None)
+    C.before(lambda x, y: None)
+
+    with pytest.raises(RuntimeError):
+        C.before(lambda a: None)
+
+    with pytest.raises(RuntimeError):
+        C.before(lambda self, b: None)

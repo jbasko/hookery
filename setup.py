@@ -21,7 +21,7 @@ setup(
     maintainer_email='jazeps.basko@gmail.com',
     license='MIT',
     url='https://github.com/jbasko/hookery',
-    description='Trivial, primitive, naive, and optimistic hook registry in Python',
+    description='Trivial, primitive, naive, and optimistic hooks in Python 3.5+',
     long_description=read('README.rst'),
     packages=['hookery'],
     install_requires=[],

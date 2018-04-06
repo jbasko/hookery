@@ -13,6 +13,10 @@ class Handler:
             raise TypeError('Handler cannot be a staticmethod, {} is one'.format(func))
         if not callable(func):
             raise TypeError('{} should be a callable'.format(func))
+
+        if isinstance(func, Handler):
+            func = func._original_func
+
         self.__name__ = func.__name__
         self.name = func.__name__
         self.hook_name = hook.name

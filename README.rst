@@ -2,11 +2,14 @@
 hookery
 *******
 
-Trivial, primitive, naive, and optimistic hooks in Python 3.5+.
-
 .. code-block:: shell
 
     pip install hookery
+
+*hookery* is to be used when inheritance becomes too complicated and it is easier to extend
+functionality by registering hook handlers instead of overriding parent class methods.
+
+Works with Python 3.5+ and will not work with anything older.
 
 Example
 -------

@@ -128,3 +128,35 @@ def test_strict_args():
 
     with pytest.raises(RuntimeError):
         C.before(lambda self, b: None)
+
+
+def test_can_stack_hook_handlers_in_subclass():
+    @hookable
+    class B:
+        before = InstanceHook()
+        after = InstanceHook()
+
+    class C(B):
+        @B.before
+        @B.after
+        def greeting(self):
+            return 'Hello {}'.format(self.__class__.__name__)
+
+    assert C().before.trigger() == ['Hello C']
+    assert C().after.trigger() == ['Hello C']
+
+
+def test_can_stack_hook_handlers_in_same_class():
+    @hookable
+    class B:
+        before = InstanceHook()
+        after = InstanceHook()
+
+        @after
+        @before
+        def greeting(self, name):
+            return 'Hello {}'.format(name)
+
+    b = B()
+    assert b.before.trigger(name='X') == ['Hello X']
+    assert b.after.trigger(name='Y') == ['Hello Y']

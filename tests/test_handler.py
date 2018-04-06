@@ -41,3 +41,17 @@ def test_instance_hook_handler_from_bound_method():
     handler = Handler(C().parse, hook=hook)
     assert handler(value=6) == 30
     assert hook.get_result_from_handler(handler, value=6) == 30
+
+
+def test_handler_of_handler_uses_original_func_as_original_func():
+    def f(a, b):
+        return a + b
+
+    handler1 = Handler(f, GlobalHook('hook'))
+
+    assert handler1._original_func is f
+
+    handler2 = Handler(handler1, GlobalHook('hook'))
+
+    assert handler2._original_func is f
+    assert handler1._original_func is f

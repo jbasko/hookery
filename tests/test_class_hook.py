@@ -130,3 +130,23 @@ def test_cls_is_passed_to_class_hooks():
     assert B.before.trigger(x=5) == []
     assert C.before.trigger(x=5) == [C, 5]
     assert D.before.trigger(x=5) == [D, 5]
+
+
+def test_can_stack_handlers():
+    @hookable
+    class B:
+        before = ClassHook()
+        after = ClassHook()
+
+        @after
+        @before
+        def greeting(cls):
+            return 'Hello'
+
+    @B.before
+    @B.after
+    def greeting2():
+        return 'Hi'
+
+    assert B.before.trigger() == ['Hello', 'Hi']
+    assert B.after.trigger() == ['Hello', 'Hi']

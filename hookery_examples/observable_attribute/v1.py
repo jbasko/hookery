@@ -1,4 +1,4 @@
-from hookery import hookable, InstanceHook
+from hookery import InstanceHook, hookable
 
 
 class ObservableAttr:
@@ -39,5 +39,6 @@ address.country = 'UK'
 def check_city(address):
     if address.city != 'London':
         print('Why are you not in London?')
+
 
 address.city = 'Guildford'

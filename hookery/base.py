@@ -110,6 +110,11 @@ class Hook:
         return self.register_handler(func)
 
     def trigger(self, **kwargs):
+        if self.args:
+            for k in kwargs.keys():
+                if not k.startswith('_') and k not in self.args:
+                    raise ValueError('Unexpected keyword argument {!r} for {}'.format(k, self))
+
         if self.single_handler:
             if self.last_handler:
                 return self.get_result_from_handler(self.last_handler, **kwargs)

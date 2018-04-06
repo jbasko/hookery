@@ -111,7 +111,7 @@ def test_self_is_populated_for_instance_hook():
     assert d.before.trigger(x=5) == [15]
 
 
-def test_strict_args():
+def test_strict_args_on_handler_registration():
     @hookable
     class C:
         before = InstanceHook(args=['x', 'y'])
@@ -130,6 +130,27 @@ def test_strict_args():
 
     with pytest.raises(RuntimeError):
         C.before(lambda self, b: None)
+
+
+def test_raise_value_error_if_trigger_receives_unknown_args():
+    @hookable
+    class C:
+        before = InstanceHook(args=['x', 'y'])
+
+    c = C()
+    c.before.trigger(x=1, y=2)
+
+    with pytest.raises(ValueError):
+        c.before.trigger(a=1)
+
+    with pytest.raises(ValueError):
+        c.before.trigger(x=1, a=2)
+
+    with pytest.raises(ValueError):
+        c.before.trigger(x=1, y=2, a=2)
+
+    # Allow underscore prefixed unknown kwargs
+    c.before.trigger(x=1, y=2, _something_unbelievable=True)
 
 
 def test_can_stack_hook_handlers_in_subclass():

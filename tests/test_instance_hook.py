@@ -2,7 +2,7 @@ import functools
 
 import pytest
 
-from hookery import InstanceHook, hookable
+from hookery import Hookable, InstanceHook, hookable
 
 
 def test_standalone_initialisation():
@@ -206,3 +206,21 @@ def test_can_register_partials_and_functions_with_kwargs_with_defaults_as_handle
     B.before(lambda a=99, b=101: a * b)
     assert B().before.trigger() == [2 * 3, 13 * 11, 99 * 101]
     assert B().before.trigger(b=103) == [2 * 103, 13 * 103, 99 * 103]
+
+
+def test_can_pass_self_to_handler():
+    class B(Hookable):
+        before = InstanceHook()
+
+        @before
+        def on_before1(self):
+            assert isinstance(self, B)
+            return 1
+
+    @B.before
+    def on_before2(self):
+        assert isinstance(self, B)
+
+    b = B()
+    b.before.trigger()
+    b.before.trigger(self=b)

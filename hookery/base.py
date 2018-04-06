@@ -1,4 +1,5 @@
 import collections
+import functools
 import inspect
 from typing import Generator, List
 
@@ -17,8 +18,13 @@ class Handler:
         if isinstance(func, Handler):
             func = func._original_func
 
-        self.__name__ = func.__name__
-        self.name = func.__name__
+        if isinstance(func, functools.partial):
+            func_name = func.func.__name__
+        else:
+            func_name = func.__name__
+
+        self.__name__ = func_name
+        self.name = func_name
         self.hook_name = hook.name
 
         if hook.args:

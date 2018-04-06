@@ -1,3 +1,5 @@
+import functools
+
 import pytest
 
 from hookery import InstanceHook, hookable
@@ -160,3 +162,26 @@ def test_can_stack_hook_handlers_in_same_class():
     b = B()
     assert b.before.trigger(name='X') == ['Hello X']
     assert b.after.trigger(name='Y') == ['Hello Y']
+
+
+def test_can_register_partials_and_functions_with_kwargs_with_defaults_as_handlers():
+    @hookable
+    class B:
+        before = InstanceHook()
+
+    def multiply(a, b):
+        return a * b
+
+    B.before(functools.partial(multiply, a=2, b=3))
+    assert B().before.trigger() == [2 * 3]
+    assert B().before.trigger(a=5) == [3 * 5]
+    assert B().before.trigger(b=7) == [2 * 7]
+
+    B.before(functools.partial(functools.partial(multiply, b=11), a=13))
+    assert B().before.trigger() == [2 * 3, 11 * 13]
+    assert B().before.trigger(a=17) == [17 * 3, 17 * 11]
+    assert B().before.trigger(b=23) == [2 * 23, 13 * 23]
+
+    B.before(lambda a=99, b=101: a * b)
+    assert B().before.trigger() == [2 * 3, 13 * 11, 99 * 101]
+    assert B().before.trigger(b=103) == [2 * 103, 13 * 103, 99 * 103]

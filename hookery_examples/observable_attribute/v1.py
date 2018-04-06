@@ -19,7 +19,7 @@ class ObservableAttr:
 
     def __set__(self, instance, value):
         setattr(instance, self.attr_store_name, value)
-        instance.updated.trigger(address=instance)  # TODO self=instance
+        instance.updated.trigger(self=instance)
 
 
 @hookable
@@ -36,8 +36,8 @@ address.country = 'UK'
 
 
 @address.updated
-def check_city(address):
-    if address.city != 'London':
+def check_city(self):
+    if self.city != 'London':
         print('Why are you not in London?')
 
 

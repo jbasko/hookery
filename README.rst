@@ -206,13 +206,3 @@ only with ``SafeRequest.before``.
 If a hook is declared in the same class body in which it is used to register a handler, then
 we need to take special care as ``parser`` is not associated with the containing ``Field`` class yet.
 
-
-**[H003]**
-
-Passing of ``self`` and ``cls`` to handlers.
-
-When handlers are registered in class declarations by decorating functions what normally would be
-instance methods, the hook sees them just as ordinary functions that perhaps take ``self`` or ``cls``
-as first argument. The actual handler being registered is NOT a bound method. Binding happens during
-hook triggering. Passing ``self=`` and ``cls=`` as keyword-arguments is problematic because they would
-be inadvertently consumed by *hookery's* internals.

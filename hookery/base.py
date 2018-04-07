@@ -1,11 +1,28 @@
 import collections
+import functools
 import inspect
 from typing import Generator, List
 
 from .utils import optional_args_func
 
 
+def _set_hook_context_in_kwargs(hook: 'Hook', kwargs: dict):
+    if hook.is_class_associated:
+        kwargs.setdefault('cls', hook.subject)
+    elif hook.is_instance_associated:
+        kwargs.setdefault('self', hook.subject)
+
+
 class Handler:
+
+    # Handler must not store the hook it was created for
+    # because it is not necessarily the same hook it will
+    # be handling -- for example, for InstanceHook handler is created
+    # with class-associated hook, but will be called with
+    # instance-associated hook.
+    # Handlers are not designed to be called by user individually directly.
+    # Instead they should use Hook.call_handler method.
+
     def __init__(self, func, hook):
         if isinstance(func, classmethod):
             raise TypeError('Handler cannot be a classmethod, {} is one'.format(func))
@@ -17,8 +34,13 @@ class Handler:
         if isinstance(func, Handler):
             func = func._original_func
 
-        self.__name__ = func.__name__
-        self.name = func.__name__
+        if isinstance(func, functools.partial):
+            func_name = func.func.__name__
+        else:
+            func_name = func.__name__
+
+        self.__name__ = func_name
+        self.name = func_name
         self.hook_name = hook.name
 
         if hook.args:
@@ -35,12 +57,8 @@ class Handler:
         self._optional_args_func = optional_args_func(self._original_func)
         self.is_generator = inspect.isgeneratorfunction(func)
 
-    def __call__(self, *, _handler_context=None, **kwargs):
-        # [H003]
-        # _handler_context is how "self" and "cls" can be passed to handler function
-        # without being consumed by hookery's implementation.
-        _handler_context = _handler_context or {}
-        return self._optional_args_func(**_handler_context, **kwargs)
+    def __call__(_self_, **kwargs):
+        return _self_._optional_args_func(**kwargs)
 
     def __repr__(self):
         return 'Handler({!r})'.format(self._original_func)
@@ -103,17 +121,43 @@ class Hook:
     def __call__(self, func) -> callable:
         return self.register_handler(func)
 
-    def trigger(self, **kwargs):
-        if self.single_handler:
-            if self.last_handler:
-                return self.get_result_from_handler(self.last_handler, **kwargs)
+    def trigger(_self_, **kwargs):
+        if _self_.args:
+            for k in kwargs.keys():
+                if not k.startswith('_') and k not in _self_.args:
+                    raise ValueError('Unexpected keyword argument {!r} for {}'.format(k, _self_))
+
+        _set_hook_context_in_kwargs(hook=_self_, kwargs=kwargs)
+
+        if _self_.single_handler:
+            if _self_.last_handler:
+                return _self_.call_handler(_self_.last_handler, **kwargs)
             else:
                 return None
 
         results = []
-        for handler in self.handlers:
-            results.append(self.get_result_from_handler(handler, **kwargs))
+        for handler in _self_.handlers:
+            result = _self_.call_handler(handler, **kwargs)
+            if handler.is_generator:
+                results.append(list(result))
+            else:
+                results.append(result)
         return results
+
+    def call_handler(_self_, _handler_, **kwargs):
+        """
+        The recommended way of calling an individual handler and getting the result.
+        This method will ensure that the handler gets the right context passed.
+
+        If handler is a generator, it will be consumed, and a list of results will be returned.
+        """
+        _set_hook_context_in_kwargs(hook=_self_, kwargs=kwargs)
+
+        result = _handler_(**kwargs)
+        if _handler_.is_generator:
+            return list(result)
+        else:
+            return result
 
     @property
     def meta(self):
@@ -170,32 +214,6 @@ class Hook:
 
         else:
             raise ValueError('{} is not a registered handler of {}'.format(handler, self))
-
-    def call_handler(self, handler, **kwargs):
-        """
-        [H003]
-        Call handler correctly by passing the right handler context.
-        If you call handler directly, you are responsible for passing the right "self" and "cls"
-        values (if required) which can only be done via _handler_context kwarg as otherwise
-        "self" and "cls" might be consumed by hookery's internals.
-        """
-        handler_context = {}
-        if self.is_class_associated:
-            handler_context['cls'] = self.subject
-        elif self.is_instance_associated:
-            handler_context['self'] = self.subject
-        return handler(_handler_context=handler_context, **kwargs)
-
-    def get_result_from_handler(self, handler, **kwargs):
-        """
-        [H003]
-        Get result from handler correctly by passing the right handler context.
-        """
-        result = self.call_handler(handler, **kwargs)
-        if handler.is_generator:
-            return list(result)
-        else:
-            return result
 
     def __bool__(self):
         return bool(self.handlers)
@@ -258,18 +276,18 @@ class HookDescriptor:
                 ))
             return getattr(instance, attr_name)
 
-    def create_hook(self, **kwargs):
-        kwargs.setdefault('name', self.name)
-        kwargs.setdefault('defining_class', self.defining_class)
-        kwargs.setdefault('args', self.defining_hook.args)
-        hook = self.hook_cls(**kwargs)
+    def create_hook(_self_, **kwargs):
+        kwargs.setdefault('name', _self_.name)
+        kwargs.setdefault('defining_class', _self_.defining_class)
+        kwargs.setdefault('args', _self_.defining_hook.args)
+        hook = _self_.hook_cls(**kwargs)
 
         # [H002]
         # copy the handlers from the defining hook -- if handlers are registered
         # right next to the hook declaration in a class body then these handlers
         # would otherwise be lost because of the Hook -> HookDescriptor -> Hook overwrite.
         if hook.is_class_associated:
-            for handler in self.defining_hook._direct_handlers:
+            for handler in _self_.defining_hook._direct_handlers:
                 hook.register_handler(handler._original_func)
 
         return hook
@@ -301,9 +319,9 @@ class ClassHook(Hook):
     to as a namespace. When you create a new class with a hookable class as its base class, the new class
     will inherit all the handlers registered with hooks of the parent class.
     """
-    def trigger(self, **kwargs):
-        if not self.is_class_associated:
-            raise TypeError('Incorrect usage of {}'.format(self))
+    def trigger(_self_, **kwargs):
+        if not _self_.is_class_associated:
+            raise TypeError('Incorrect usage of {}'.format(_self_))
         return super().trigger(**kwargs)
 
     def register_handler(self, handler):
@@ -324,16 +342,14 @@ class InstanceHook(Hook):
     called first and then all handlers for the instance-associated hook will be called.
     """
 
-    def trigger(self, **kwargs):
-        if not self.defining_class:
+    def trigger(_self_, **kwargs):
+        if not _self_.defining_class:
             raise RuntimeError((
                 'Did you forget to decorate your hookable class? {} is not initialised properly.'
-            ).format(self))
+            ).format(_self_))
 
-        if not self.is_instance_associated:
-            raise TypeError('Incorrect usage of {}'.format(self))
-
-        kwargs.setdefault('_hook_subject', self.subject)
+        if not _self_.is_instance_associated:
+            raise TypeError('Incorrect usage of {}'.format(_self_))
 
         return super().trigger(**kwargs)
 

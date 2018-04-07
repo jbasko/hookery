@@ -1,6 +1,8 @@
+import functools
+
 import pytest
 
-from hookery import InstanceHook, hookable
+from hookery import Hookable, InstanceHook, hookable
 
 
 def test_standalone_initialisation():
@@ -109,7 +111,7 @@ def test_self_is_populated_for_instance_hook():
     assert d.before.trigger(x=5) == [15]
 
 
-def test_strict_args():
+def test_strict_args_on_handler_registration():
     @hookable
     class C:
         before = InstanceHook(args=['x', 'y'])
@@ -128,6 +130,27 @@ def test_strict_args():
 
     with pytest.raises(RuntimeError):
         C.before(lambda self, b: None)
+
+
+def test_raise_value_error_if_trigger_receives_unknown_args():
+    @hookable
+    class C:
+        before = InstanceHook(args=['x', 'y'])
+
+    c = C()
+    c.before.trigger(x=1, y=2)
+
+    with pytest.raises(ValueError):
+        c.before.trigger(a=1)
+
+    with pytest.raises(ValueError):
+        c.before.trigger(x=1, a=2)
+
+    with pytest.raises(ValueError):
+        c.before.trigger(x=1, y=2, a=2)
+
+    # Allow underscore prefixed unknown kwargs
+    c.before.trigger(x=1, y=2, _something_unbelievable=True)
 
 
 def test_can_stack_hook_handlers_in_subclass():
@@ -160,3 +183,44 @@ def test_can_stack_hook_handlers_in_same_class():
     b = B()
     assert b.before.trigger(name='X') == ['Hello X']
     assert b.after.trigger(name='Y') == ['Hello Y']
+
+
+def test_can_register_partials_and_functions_with_kwargs_with_defaults_as_handlers():
+    @hookable
+    class B:
+        before = InstanceHook()
+
+    def multiply(a, b):
+        return a * b
+
+    B.before(functools.partial(multiply, a=2, b=3))
+    assert B().before.trigger() == [2 * 3]
+    assert B().before.trigger(a=5) == [3 * 5]
+    assert B().before.trigger(b=7) == [2 * 7]
+
+    B.before(functools.partial(functools.partial(multiply, b=11), a=13))
+    assert B().before.trigger() == [2 * 3, 11 * 13]
+    assert B().before.trigger(a=17) == [17 * 3, 17 * 11]
+    assert B().before.trigger(b=23) == [2 * 23, 13 * 23]
+
+    B.before(lambda a=99, b=101: a * b)
+    assert B().before.trigger() == [2 * 3, 13 * 11, 99 * 101]
+    assert B().before.trigger(b=103) == [2 * 103, 13 * 103, 99 * 103]
+
+
+def test_can_pass_self_to_handler():
+    class B(Hookable):
+        before = InstanceHook()
+
+        @before
+        def on_before1(self):
+            assert isinstance(self, B)
+            return 1
+
+    @B.before
+    def on_before2(self):
+        assert isinstance(self, B)
+
+    b = B()
+    b.before.trigger()
+    b.before.trigger(self=b)

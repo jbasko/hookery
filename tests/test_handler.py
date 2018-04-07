@@ -28,7 +28,7 @@ def test_handler_from_generator():
     assert handler.is_generator
     assert inspect.isgenerator(handler())
     assert list(handler(a=5, b=6)) == [10, 18]
-    assert hook2.get_result_from_handler(handler, a=5, b=6) == [10, 18]
+    assert hook2.call_handler(handler, a=5, b=6) == [10, 18]
 
 
 def test_instance_hook_handler_from_bound_method():
@@ -40,7 +40,7 @@ def test_instance_hook_handler_from_bound_method():
     hook = InstanceHook('before')
     handler = Handler(C().parse, hook=hook)
     assert handler(value=6) == 30
-    assert hook.get_result_from_handler(handler, value=6) == 30
+    assert hook.call_handler(handler, value=6) == 30
 
 
 def test_handler_of_handler_uses_original_func_as_original_func():

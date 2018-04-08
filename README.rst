@@ -84,13 +84,11 @@ When a hookable strategy is executed and the control of the program reaches a ho
 the corresponding hook will be **triggered**, and through that all registered handler functions
 will be called and their results collected.
 
-*hookery* provides a few flavours of hooks: **global hooks**, **class hooks**, and **instance hooks**.
+*hookery* provides a few flavours of hooks: **standalone hooks**, **class hooks**, and **instance hooks**.
 
-**Global hooks** are the simplest -— they are just events in global scope that user
-can subscribe to (register handlers with) and can trigger from anywhere without any context.
-They don’t necessarily have to be global, but they are unless user manages the scope.
-For example, if your application had a global ``before_shutdown`` hook
-then handlers registered with it would be called for all applications.
+**A standalone hook** is just something that can be registered handlers with. It does not have a subject,
+it is not associated with any class or instance and so it does not inherit any handlers. All handlers
+are registered directly on the hook object itself.
 
 **A class hook** is associated with a particular class. By default, a separate hook is generated
 automatically for every class derived from this class, however, the derived class hook inherits
@@ -149,7 +147,7 @@ it yields will be returned as a list.
 
 .. code-block:: python
 
-    on_application_shutdown = GlobalHook()
+    on_application_shutdown = Hook()
 
     @on_application_shutdown
     def say_bye(user):

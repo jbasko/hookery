@@ -1,10 +1,10 @@
 import pytest
 
-from hookery import GlobalHook
+from hookery import Hook
 
 
 def test_cannot_register_classmethod_or_staticmethod_as_handler():
-    before = GlobalHook('before')
+    before = Hook('before')
 
     with pytest.raises(TypeError):
         before(classmethod(lambda cls: None))

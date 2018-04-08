@@ -1,13 +1,13 @@
 import inspect
 
-from hookery.base import GlobalHook, Handler, InstanceHook
+from hookery import Handler, Hook, InstanceHook
 
 
 def test_handler_from_func():
     def f(a, b):
         return a - b
 
-    h = Handler(f, GlobalHook('hook1'))
+    h = Handler(f, Hook('hook1'))
     assert callable(h)
     assert h.__name__ == 'f'
     assert h.name == 'f'
@@ -22,7 +22,7 @@ def test_handler_from_generator():
         yield 2 * a
         yield 3 * b
 
-    hook2 = GlobalHook('hook2')
+    hook2 = Hook('hook2')
     handler = Handler(g, hook2)
     assert handler.hook_name == 'hook2'
     assert handler.is_generator
@@ -47,11 +47,11 @@ def test_handler_of_handler_uses_original_func_as_original_func():
     def f(a, b):
         return a + b
 
-    handler1 = Handler(f, GlobalHook('hook'))
+    handler1 = Handler(f, Hook('hook'))
 
     assert handler1._original_func is f
 
-    handler2 = Handler(handler1, GlobalHook('hook'))
+    handler2 = Handler(handler1, Hook('hook'))
 
     assert handler2._original_func is f
     assert handler1._original_func is f

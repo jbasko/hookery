@@ -77,17 +77,15 @@ class NoSubject:
 
 class Hook:
     """
-    A hook is something that has a name, has a subject, and may have handlers
-    registered with it.
+    A hook is something that a user can hook into.
+
+    It may have a name, a subject. To hook into it, user registers handlers with it.
 
     When a thing has hooks, it means one can interact with this thing via hooks.
     This thing that the hook is providing a way to interact with, is here called the hook's subject.
 
     Hook's handlers are functions registered to be called when the hook is triggered (called)
     most often by hook's subject itself.
-
-    When there is no explicit subject for a hook, it is like a global event that you can register
-    listeners to.
     """
     def __init__(
         self, name=None, subject=None,
@@ -95,9 +93,6 @@ class Hook:
         defining_class=None,
         args=None,
     ):
-        if self.__class__ is Hook:
-            raise TypeError('{} instances should not be created, choose one of the flavours'.format(Hook))
-
         self.name = name
         self.subject = subject if subject is not None else NoSubject()
 
@@ -189,31 +184,42 @@ class Hook:
         else:
             return None
 
-    def register_handler(self, handler) -> Handler:
-        handler = Handler(handler, hook=self)
+    def register_handler(self, handler_func) -> Handler:
+        handler = Handler(handler_func, hook=self)
         self._direct_handlers.append(handler)
         self._cached_handlers = None
         return handler
 
-    def unregister_handler(self, handler):
+    def has_handler(self, handler_or_func) -> bool:
+        for handler in self._direct_handlers:
+            if handler is handler_or_func or handler._original_func is handler_or_func:
+                return True
+        return False
+
+    def unregister_handler(self, handler_or_func):
         """
         Remove the handler from this hook's list of handlers.
         This does not give up until the handler is found in the class hierarchy.
         """
-        if handler in self._direct_handlers:
-            self._direct_handlers.remove(handler)
+        index = -1
+        for i, handler in enumerate(self._direct_handlers):
+            if handler is handler_or_func or handler._original_func is handler_or_func:
+                index = i
+                break
+        if index >= 0:
+            self._direct_handlers.pop(index)
             self._cached_handlers = None
 
-        elif self.parent_class_hook is not None and handler in self.parent_class_hook.handlers:
-            self.parent_class_hook.unregister_handler(handler)
+        elif self.parent_class_hook is not None and self.parent_class_hook.has_handler(handler_or_func):
+            self.parent_class_hook.unregister_handler(handler_or_func)
             self._cached_handlers = None
 
-        elif self.instance_class_hook is not None and handler in self.instance_class_hook.handlers:
-            self.instance_class_hook.unregister_handler(handler)
+        elif self.instance_class_hook is not None and self.instance_class_hook.has_handler(handler_or_func):
+            self.instance_class_hook.unregister_handler(handler_or_func)
             self._cached_handlers = None
 
         else:
-            raise ValueError('{} is not a registered handler of {}'.format(handler, self))
+            raise ValueError('{} is not a registered handler of {}'.format(handler_or_func, self))
 
     def __bool__(self):
         return bool(self.handlers)
@@ -298,18 +304,6 @@ class HookDescriptor:
     __repr__ = __str__
 
 
-class GlobalHook(Hook):
-    """
-    Global hooks are just events in global scope that user can subscribe to (register handlers with)
-    and can trigger from anywhere without any context. They don’t necessarily have to be global,
-    but they are unless user manages the scope.
-    """
-    def __init__(self, name=None, **kwargs):
-        if not name:
-            raise ValueError('{}.name is required'.format(self.__class__.__name__))
-        super().__init__(name=name, subject=NoSubject(), **kwargs)
-
-
 class ClassHook(Hook):
     """
     A class hook is associated with a particular class. By default, a separate hook is generated
@@ -324,10 +318,10 @@ class ClassHook(Hook):
             raise TypeError('Incorrect usage of {}'.format(_self_))
         return super().trigger(**kwargs)
 
-    def register_handler(self, handler):
+    def register_handler(self, handler_func):
         if self.is_instance_associated:
             raise TypeError('Incorrect usage of {}'.format(self))
-        return super().register_handler(handler)
+        return super().register_handler(handler_func)
 
 
 class InstanceHook(Hook):

@@ -1,9 +1,9 @@
 import pytest
 
-from hookery import ClassHook, GlobalHook, InstanceHook, hookable
+from hookery import ClassHook, Hook, InstanceHook, hookable
 
 
-@pytest.mark.parametrize('hook_cls', [GlobalHook, ClassHook, InstanceHook])
+@pytest.mark.parametrize('hook_cls', [Hook, ClassHook, InstanceHook])
 def test_hook_is_falsey_if_it_has_no_handlers(hook_cls):
     h1 = hook_cls('h1')
     assert not h1

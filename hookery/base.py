@@ -1,4 +1,5 @@
 import collections
+import contextlib
 import functools
 import inspect
 from typing import Generator, List
@@ -113,8 +114,24 @@ class Hook:
         self._direct_handlers = []
         self._cached_handlers = None
 
+        self._is_triggering = False
+
     def __call__(self, func) -> callable:
         return self.register_handler(func)
+
+    @contextlib.contextmanager
+    def _triggering_ctx(self):
+        """
+        Context manager that ensures that a hook is not re-triggered by one of its handlers.
+
+        Handlers that are called individually by user without going through call_handler
+        will be executed outside this context.
+        """
+        if self._is_triggering:
+            raise RuntimeError('{} cannot be triggered while it is being handled'.format(self))
+        self._is_triggering = True
+        yield self
+        self._is_triggering = False
 
     def trigger(_self_, **kwargs):
         if _self_.args:
@@ -148,11 +165,12 @@ class Hook:
         """
         _set_hook_context_in_kwargs(hook=_self_, kwargs=kwargs)
 
-        result = _handler_(**kwargs)
-        if _handler_.is_generator:
-            return list(result)
-        else:
-            return result
+        with _self_._triggering_ctx():
+            result = _handler_(**kwargs)
+            if _handler_.is_generator:
+                return list(result)
+            else:
+                return result
 
     @property
     def meta(self):

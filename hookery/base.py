@@ -2,27 +2,17 @@ import collections
 import contextlib
 import functools
 import inspect
-from typing import Generator, List
+from typing import Generator, List, Optional
 
 from .utils import optional_args_func
 
 
-def _set_hook_context_in_kwargs(hook: 'Hook', kwargs: dict):
-    if hook.is_class_associated:
-        kwargs.setdefault('cls', hook.subject)
-    elif hook.is_instance_associated:
-        kwargs.setdefault('self', hook.subject)
-
-
 class Handler:
+    """
+    Unbound handler.
 
-    # Handler must not store the hook it was created for
-    # because it is not necessarily the same hook it will
-    # be handling -- for example, for InstanceHook handler is created
-    # with class-associated hook, but will be called with
-    # instance-associated hook.
-    # Handlers are not designed to be called by user individually directly.
-    # Instead they should use Hook.call_handler method.
+    See also BoundHandler.
+    """
 
     def __init__(self, func, hook):
         if isinstance(func, classmethod):
@@ -63,6 +53,45 @@ class Handler:
 
     def __repr__(self):
         return 'Handler({!r})'.format(self._original_func)
+
+
+class BoundHandler(Handler):
+    """
+    Handler associated with a Hook.
+    Created when requesting a hook's handlers by associating unbound handlers with the hook.
+    """
+    def __init__(self, hook: 'Hook', handler: Handler):
+        self.hook = hook
+        if isinstance(handler, BoundHandler):
+            self._handler = handler._handler
+        else:
+            self._handler = handler
+
+    def __getattribute__(self, name):
+        if name in ('hook', '_handler'):
+            return object.__getattribute__(self, name)
+        else:
+            return getattr(self._handler, name)
+
+    def __setattr__(self, name, value):
+        if name in ('hook', '_handler'):
+            object.__setattr__(self, name, value)
+        else:
+            raise AttributeError(name)
+
+    def __call__(_self_, **kwargs):
+        kwargs.setdefault('hook', _self_.hook)
+
+        if _self_.hook.is_class_associated:
+            kwargs.setdefault('cls', _self_.hook.subject)
+        elif _self_.hook.is_instance_associated:
+            kwargs.setdefault('self', _self_.hook.subject)
+
+        with _self_.hook._triggering_ctx():
+            if _self_._handler.is_generator:
+                return list(_self_._handler(**kwargs))
+            else:
+                return _self_._handler(**kwargs)
 
 
 class NoSubject:
@@ -123,9 +152,6 @@ class Hook:
     def _triggering_ctx(self):
         """
         Context manager that ensures that a hook is not re-triggered by one of its handlers.
-
-        Handlers that are called individually by user without going through call_handler
-        will be executed outside this context.
         """
         if self._is_triggering:
             raise RuntimeError('{} cannot be triggered while it is being handled'.format(self))
@@ -139,38 +165,17 @@ class Hook:
                 if not k.startswith('_') and k not in _self_.args:
                     raise ValueError('Unexpected keyword argument {!r} for {}'.format(k, _self_))
 
-        _set_hook_context_in_kwargs(hook=_self_, kwargs=kwargs)
-
         if _self_.single_handler:
             if _self_.last_handler:
-                return _self_.call_handler(_self_.last_handler, **kwargs)
+                return _self_.last_handler(**kwargs)
             else:
                 return None
 
         results = []
         for handler in _self_.handlers:
-            result = _self_.call_handler(handler, **kwargs)
-            if handler.is_generator:
-                results.append(list(result))
-            else:
-                results.append(result)
+            result = handler(**kwargs)
+            results.append(result)
         return results
-
-    def call_handler(_self_, _handler_, **kwargs):
-        """
-        The recommended way of calling an individual handler and getting the result.
-        This method will ensure that the handler gets the right context passed.
-
-        If handler is a generator, it will be consumed, and a list of results will be returned.
-        """
-        _set_hook_context_in_kwargs(hook=_self_, kwargs=kwargs)
-
-        with _self_._triggering_ctx():
-            result = _handler_(**kwargs)
-            if _handler_.is_generator:
-                return list(result)
-            else:
-                return result
 
     @property
     def meta(self):
@@ -183,20 +188,23 @@ class Hook:
         }
 
     def get_all_handlers(self) -> Generator[Handler, None, None]:
-        if self.parent_class_hook is not None:
-            yield from self.parent_class_hook.get_all_handlers()
-        if self.instance_class_hook is not None:
-            yield from self.instance_class_hook.get_all_handlers()
-        yield from self._direct_handlers
+        def get_raw_handlers():
+            if self.parent_class_hook is not None:
+                yield from self.parent_class_hook.get_all_handlers()
+            if self.instance_class_hook is not None:
+                yield from self.instance_class_hook.get_all_handlers()
+            yield from self._direct_handlers
+
+        yield from (BoundHandler(self, h) for h in get_raw_handlers())
 
     @property
-    def handlers(self) -> List[Handler]:
+    def handlers(self) -> List[BoundHandler]:
         if self._cached_handlers is None:
             self._cached_handlers = list(self.get_all_handlers())
         return self._cached_handlers
 
     @property
-    def last_handler(self):
+    def last_handler(self) -> Optional[BoundHandler]:
         if self.handlers:
             return self.handlers[-1]
         else:
@@ -212,6 +220,13 @@ class Hook:
         for handler in self._direct_handlers:
             if handler is handler_or_func or handler._original_func is handler_or_func:
                 return True
+
+        if self.parent_class_hook is not None and self.parent_class_hook.has_handler(handler_or_func):
+            return True
+
+        if self.instance_class_hook is not None and self.instance_class_hook.has_handler(handler_or_func):
+            return True
+
         return False
 
     def unregister_handler(self, handler_or_func):
@@ -398,7 +413,7 @@ class HookableMeta(type):
                         # don't have name set yet.
                         continue
                     parent_hook = getattr(hookable_parent, v.hook_name, None)  # type: Hook
-                    if parent_hook is not None and v in parent_hook.handlers:
+                    if parent_hook is not None and parent_hook.has_handler(v):
                         parent_hook.unregister_handler(v)
                         handlers_registered_with_parent_class_hook.append((v.hook_name, v._original_func))
 

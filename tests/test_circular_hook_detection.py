@@ -8,8 +8,6 @@ from hookery import Hook, Hookable, InstanceHook
     Hook(single_handler=True),
 ])
 def test_hook_handler_cannot_trigger_the_hook(hook):
-    hook = Hook()
-
     def handler():
         hook.trigger()
 
@@ -37,3 +35,19 @@ def test_multiple_instances_can_trigger_independently():
         return b2.before.trigger()
 
     assert b1.before.trigger() == [['b2']]
+
+
+@pytest.mark.parametrize('hook', [
+    Hook(),
+    Hook(single_handler=True),
+])
+def test_exception_in_handler_resets_triggering_context(hook):
+    def handler():
+        raise ValueError()
+
+    hook(handler)
+
+    with pytest.raises(ValueError):
+        hook.trigger()
+
+    assert not hook._is_triggering

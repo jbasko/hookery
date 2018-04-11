@@ -1,4 +1,4 @@
-__version__ = '3.9.0'
+__version__ = '3.9.1'
 
 from .base import BoundHandler, ClassHook, Handler, Hook, Hookable, HookableMeta, HookDescriptor, InstanceHook, hookable
 

@@ -156,8 +156,10 @@ class Hook:
         if self._is_triggering:
             raise RuntimeError('{} cannot be triggered while it is being handled'.format(self))
         self._is_triggering = True
-        yield self
-        self._is_triggering = False
+        try:
+            yield self
+        finally:
+            self._is_triggering = False
 
     def trigger(_self_, **kwargs):
         if _self_.args:

@@ -1,3 +1,5 @@
+import inspect
+
 import pytest
 
 from hookery import ClassHook, Hook, InstanceHook, hookable
@@ -88,3 +90,22 @@ def test_hook_in_same_class_where_it_is_declared():
 
     assert C().between.trigger(x=20, y=10) == [80]
     assert C.betwixt.trigger(x=20, y=10) == [60]
+
+
+def test_hook_with_consume_generators_false():
+    hook = Hook(consume_generators=False)
+
+    @hook
+    def generate_things():
+        yield from range(10)
+
+    @hook
+    def generate_other_things():
+        yield from range(5)
+
+    results = hook.trigger()
+    assert isinstance(results, list)
+    assert inspect.isgenerator(results[0])
+    assert inspect.isgenerator(results[1])
+    assert list(results[0]) == list(range(10))
+    assert list(results[1]) == list(range(5))

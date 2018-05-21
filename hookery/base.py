@@ -88,7 +88,7 @@ class BoundHandler(Handler):
             kwargs.setdefault('self', _self_.hook.subject)
 
         with _self_.hook._triggering_ctx():
-            if _self_._handler.is_generator:
+            if _self_._handler.is_generator and _self_.hook.consume_generators:
                 return list(_self_._handler(**kwargs))
             else:
                 return _self_._handler(**kwargs)
@@ -122,6 +122,7 @@ class Hook:
         parent_class_hook=None, instance_class_hook=None, single_handler=False,
         defining_class=None,
         args=None,
+        consume_generators=True,
     ):
         self.name = name
         self.subject = subject if subject is not None else NoSubject()
@@ -139,6 +140,10 @@ class Hook:
         self.single_handler = single_handler  # type: bool
 
         self.args = tuple(args) if args else ()
+
+        # If the underlying handler function is a generator, it will be consumed when calling the handler.
+        # Set consume_generators to False to disable this behaviour.
+        self.consume_generators = consume_generators
 
         self._direct_handlers = []
         self._cached_handlers = None

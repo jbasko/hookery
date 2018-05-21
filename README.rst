@@ -143,7 +143,8 @@ Handlers
 Any function or generator function can be registered as a handler.
 
 If a handler is a generator function, it will be fully consumed on hook trigger and all the values
-it yields will be returned as a list.
+it yields will be returned as a list. To disable this functionality, the hook must be declared
+with ``consume_generators=False``.
 
 .. code-block:: python
 

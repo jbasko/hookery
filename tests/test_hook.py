@@ -94,6 +94,7 @@ def test_hook_in_same_class_where_it_is_declared():
 
 def test_hook_with_consume_generators_false():
     hook = Hook(consume_generators=False)
+    assert hook.consume_generators is False
 
     @hook
     def generate_things():
@@ -109,3 +110,25 @@ def test_hook_with_consume_generators_false():
     assert inspect.isgenerator(results[1])
     assert list(results[0]) == list(range(10))
     assert list(results[1]) == list(range(5))
+
+    @hookable
+    class B:
+        before = InstanceHook(consume_generators=False)
+
+        @before
+        def generate_some(self):
+            yield from range(3)
+
+        @before
+        def generate_more(self):
+            yield from range(2)
+
+    assert B.before.consume_generators is False
+
+    b = B()
+    assert b.before.consume_generators is False
+
+    results = b.before.trigger()
+    assert isinstance(results, list)
+    assert inspect.isgenerator(results[0])
+    assert inspect.isgenerator(results[1])

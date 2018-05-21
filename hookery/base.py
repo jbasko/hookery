@@ -192,6 +192,7 @@ class Hook:
         """
         return {
             'single_handler': self.single_handler,
+            'consume_generators': self.consume_generators,
         }
 
     def get_all_handlers(self) -> Generator[Handler, None, None]:

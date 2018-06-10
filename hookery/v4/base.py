@@ -49,13 +49,15 @@ class BoundHook:
         self.name = name
         self.spec = spec  # type: HookSpec
 
-    def __call__(self, f):
+    def __call__(self, ctx):
         """
-        Decorator to register handlers for this hook.
-        The handler being decorated doesn't have to carry the hook's name.
+        Creates a handler registration function against the ctx object --
+        the returned function can be used to register a handler of this hook on the ctx object.
         """
-        self.spec._register_handler(self.name, f)
-        return f
+        def register_handler(f):
+            self.spec._register_handler(self.name, f, ctx=ctx)
+
+        return register_handler
 
     def trigger(self, ctx, *args, **kwargs):
         """
@@ -137,10 +139,10 @@ class HookSpec(metaclass=HookSpecMeta):
     All methods of HookSpec whose name does not start with "_" are hooks.
     """
     def __init__(self):
-        self._handlers = collections.defaultdict(list)
+        self._ctx_specific_handlers = collections.defaultdict(list)
         self._triggers = {}
 
-    def _register_handler(self, hook_name, handler):
+    def _register_handler(self, hook_name, handler, ctx=None):
         if hook_name not in self.hooks:
             raise ValueError('Unknown hook {!r}'.format(hook_name))
 
@@ -150,17 +152,22 @@ class HookSpec(metaclass=HookSpecMeta):
 
         assert handles_hook(handler, hook_name)
 
-        # TODO Is this even needed now?
-        self._handlers[hook_name].append(optional_args_func(handler))
+        # We only store handlers that are associated with a ctx object.
+        if ctx is not None:
+            self._ctx_specific_handlers[(ctx, hook_name)].append(optional_args_func(handler))
 
     def _get_handlers(self, hook_name, ctx):
         handlers = []
 
+        # Handlers associated with classes in the class tree of the ctx object
         for base in reversed(type(ctx).__mro__[:-1]):
             if hook_name in base.__dict__:
                 handler = base.__dict__[hook_name]
                 if handles_hook(handler, hook_name):
                     handlers.append(handler)
+
+        # Handlers associated with the individual ctx object
+        handlers.extend(self._ctx_specific_handlers[(ctx, hook_name)])
 
         return handlers
 

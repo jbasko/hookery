@@ -104,7 +104,6 @@ def test_can_register_instance_specific_handler():
     cli1 = FirstCli()
     cli2 = FirstCli()
 
-    # TODO This requires a change! No more use of it as handler registration directly!
     @cli_hooks.init_parser(cli1)
     def init_parser(parser):
         parser.add_argument('--dry-run', action='store_true')

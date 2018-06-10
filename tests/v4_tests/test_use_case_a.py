@@ -28,7 +28,7 @@ class DateLimitMixin:
             self.date_range = (args.date_from, args.date_to)
 
 
-class CountLimiMixin:
+class CountLimitMixin:
     limit_count = None
 
     @cli_hooks
@@ -42,26 +42,44 @@ class CountLimiMixin:
 
 class Cli:
     def run(self, args=None):
-        parser = argparse.ArgumentParser()
-        cli_hooks.init_parser.trigger(self, parser=parser)
-
+        parser = self.init_parser()
         args = parser.parse_args(args=args)
         cli_hooks.inject_args.trigger(self, args=args)
 
+    # Note that this is not a hook handler even though
+    # it is called just like a hook and it will be
+    # in the context parent class's attribute dictionary.
+    # In fact, this is just a helper that hides away
+    # the cli_hooks.init_parser.trigger boilerplate.
+    def init_parser(self):
+        parser = argparse.ArgumentParser()
+        cli_hooks.init_parser.trigger(self, parser=parser)
+        return parser
 
-class FirstCli(DateLimitMixin, CountLimiMixin, Cli):
+
+class FirstCli(DateLimitMixin, CountLimitMixin, Cli):
     @cli_hooks
     def init_parser(self, parser):
         parser.add_argument('--my-first-argument')
 
 
-class SecondCli(DateLimitMixin, CountLimiMixin, Cli):
+class SecondCli(DateLimitMixin, CountLimitMixin, Cli):
     @cli_hooks
     def init_parser(self, parser):
         parser.add_argument('--my-second-argument')
 
 
-def test_first_cli(capsys):
+def test_first_cli_init():
+    cli = FirstCli()
+    handlers = cli_hooks._get_handlers('init_parser', cli)
+    assert handlers == [
+        CountLimitMixin.init_parser,
+        DateLimitMixin.init_parser,
+        FirstCli.init_parser,
+    ]
+
+
+def test_first_cli_runs(capsys):
     with pytest.raises(SystemExit):
         FirstCli().run(args=['--help'])
 
@@ -72,7 +90,7 @@ def test_first_cli(capsys):
     assert '--my-second-argument' not in out
 
 
-def test_second_cli(capsys):
+def test_second_cli_runs(capsys):
     with pytest.raises(SystemExit):
         SecondCli().run(args=['--help'])
 

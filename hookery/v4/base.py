@@ -57,8 +57,14 @@ class BoundHook:
         self.spec._register_handler(self.name, f)
         return f
 
-    def trigger(self, *args, **kwargs):
-        return self.spec._get_trigger(self.name)(*args, **kwargs)
+    def trigger(self, ctx, *args, **kwargs):
+        """
+        `ctx` is the object on which the event is happening; it is used to
+        determine the class whose handlers should be invoked. It is also
+        passed as the first positional argument to the handlers which
+        for class based handlers is usually self.
+        """
+        return self.spec._get_trigger(self.name, ctx)(ctx, *args, **kwargs)
 
 
 class HookSpecMeta(type):
@@ -103,6 +109,27 @@ class HookSpecMeta(type):
         return super().__new__(meta, name, bases, clean_dct)
 
 
+def get_handler_marker(handler):
+    marker = getattr(handler, '_hookery_marker', None)
+    if marker is None:
+        marker = []
+    return marker
+
+
+def set_handler_marker(handler, marker):
+    setattr(handler, '_hookery_marker', marker)
+
+
+def add_to_handler_marker(handler, hook_name):
+    marker = get_handler_marker(handler)
+    marker.append(hook_name)
+    set_handler_marker(handler, marker)
+
+
+def handles_hook(handler, hook_name):
+    return hook_name in get_handler_marker(handler)
+
+
 class HookSpec(metaclass=HookSpecMeta):
     """
     Hook specification. Also acts as a hook handler registry.
@@ -116,12 +143,31 @@ class HookSpec(metaclass=HookSpecMeta):
     def _register_handler(self, hook_name, handler):
         if hook_name not in self.hooks:
             raise ValueError('Unknown hook {!r}'.format(hook_name))
+
+        # Mark the handler so we can distinguish it from hook-named methods that aren't registered.
+        add_to_handler_marker(handler, hook_name)
+
+        print(get_handler_marker(handler))
+        assert handles_hook(handler, hook_name)
+
+        # TODO Is this even needed now?
         self._handlers[hook_name].append(optional_args_func(handler))
 
-    def _get_trigger(self, hook_name):
+    def _get_handlers(self, hook_name, ctx):
+        handlers = []
+
+        for base in reversed(type(ctx).__mro__[:-1]):
+            if hook_name in base.__dict__:
+                handler = base.__dict__[hook_name]
+                if handles_hook(handler, hook_name):
+                    handlers.append(handler)
+
+        return handlers
+
+    def _get_trigger(self, hook_name, ctx):
         if hook_name not in self._triggers:
             def trigger(*args, **kwargs):
-                results = [h(*args, **kwargs) for h in self._handlers[hook_name]]
+                results = [h(*args, **kwargs) for h in self._get_handlers(hook_name, ctx)]
                 return results
             self._triggers[hook_name] = trigger
         return self._triggers[hook_name]

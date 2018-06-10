@@ -1,12 +1,45 @@
+import abc
 import collections
 from typing import Union
 
 from hookery.utils import optional_args_func
 
 
-class Hook:
+class AbstractHook(abc.ABC):
+    """
+    Events happen to objects. Events that can be listened to and used to hook into execution
+    of some algorithm are called hooks.
+
+    To hook into a hook, one registers a hook handler. Handlers can be associated with a context
+    explicitly, implicitly, or even be not associated with any context in which case they are called
+    whenever the event happens irrespective of who it happens to.
+    """
+
+    @abc.abstractmethod
+    def trigger(self, ctx, *args, **kwargs):
+        """
+        `ctx` is the object on which the event is happening; it is used to
+        determine the class whose handlers should be invoked. It is also
+        passed as the first positional argument to the handlers.
+        """
+        raise NotImplementedError()
+
+    def __call__(self, ctx=None, *args, **kwargs):
+        """
+        Calling a hook instance should create a decorator that registers handlers
+        associated with `ctx` passed to `__call__`.
+
+        Calling without any `ctx` creates a decorator that registers a global handler.
+        A global handler is called irrespective of context in which the event happens.
+        """
+        raise NotImplementedError()
+
+
+class Hook(AbstractHook):
     """
     Represents an unbound hook.
+
+    A hook is unbound before it is associated with a hook specification -- an instance of :class:`HookSpec`.
     """
 
     def __init__(self, name: str=None):
@@ -20,7 +53,7 @@ class Hook:
                 setattr(instance, self._attr_name, BoundHook(self.name, spec=instance))
             return getattr(instance, self._attr_name)
 
-    def __set_name__(self, owner, name):  # Python 3.6
+    def __set_name__(self, owner, name):  # Python 3.6+
         owner.name = name
 
     def __repr__(self):
@@ -29,21 +62,31 @@ class Hook:
             self.name
         )
 
-    @property
-    def _attr_name(self):
-        return 'hook#{}'.format(self.name)
-
-    def trigger(self, *args, **kwargs):
+    def trigger(self, ctx, *args, **kwargs):
         """
-        Unbound Hook instances should not be triggered.
-        This is just to help with debugging.
+        Unbound :class:`Hook` instances should not be triggered.
         """
         raise RuntimeError('{} instance should not be triggered'.format(self.__class__))
 
+    def __call__(self, ctx=None, *args, **kwargs):
+        raise RuntimeError(
+            'Handler registration decorators should only be '
+            'created for hooks bound to a hook specification.'
+        )
 
-class BoundHook:
+    @property
+    def _attr_name(self):
+        """
+        Name under which this hook is stored in the ``__dict__`` of :class:`HookSpec` instance.
+        """
+        return 'hook#{}'.format(self.name)
+
+
+class BoundHook(AbstractHook):
     """
     A hook that is bound to an instance of hook specification.
+
+    See :class:`Hook`.
     """
     def __init__(self, name: str, spec: 'HookSpec'):
         self.name = name
@@ -60,12 +103,6 @@ class BoundHook:
         return register_handler
 
     def trigger(self, ctx, *args, **kwargs):
-        """
-        `ctx` is the object on which the event is happening; it is used to
-        determine the class whose handlers should be invoked. It is also
-        passed as the first positional argument to the handlers which
-        for class based handlers is usually self.
-        """
         return self.spec._get_trigger(self.name, ctx)(ctx, *args, **kwargs)
 
 

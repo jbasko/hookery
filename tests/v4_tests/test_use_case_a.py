@@ -78,70 +78,160 @@ Issues:
     Class based handlers?
     Instance based handlers?
 
+What are the hooks for? To change the instance or to have external, unrelated side-effects?
+
+Handlers are registered in the hook spec against classes.
+Because you are registering against hook spec, there cannot be any instance-specific handlers.
+How do you then have instance-specific handlers?
+Maybe instance.hook_name.register_handler()?
+Because instance.hook_name is different from class.hook_name.
+It's a descriptor. Should be one.
 
 """
 import collections
-from typing import Callable, Type
+from typing import Type, Union
+
+
+class HookDescriptor:
+    def __init__(self, name: str):
+        self.name = name
+
+    @property
+    def _attr_name(self):
+        return 'hook#{}'.format(self.name)
+
+    def __get__(self, instance, owner) -> Union['Hook', 'HookDescriptor']:
+        if instance is None:
+            return self
+        else:
+            if not hasattr(instance, self._attr_name):
+                setattr(instance, self._attr_name, Hook(self.name, spec=instance))
+            return getattr(instance, self._attr_name)
+
+    def __set_name__(self, owner, name):  # Python 3.6
+        owner.name = name
+
+    def __repr__(self):
+        return '<{} {!r}>'.format(
+            self.__class__.__name__,
+            self.name
+        )
 
 
 class Hook:
-    def __init__(self, name: str, spec: Type['HookSpec']):
+    def __init__(self, name: str, spec: 'HookSpec'):
         self.name = name
-        self.spec = spec
+        self.spec = spec  # type: HookSpec
 
     def __call__(self, f):
         """
-        Decorator for handlers of this hook.
-        The handler being decorated doesn't have to be carry the hook's name.
+        Decorator to register handlers for this hook.
+        The handler being decorated doesn't have to carry the hook's name.
         """
-        self.spec.register_handler(self, f)
+        self.spec._register_handler(self.name, f)
+        return self.spec._get_trigger(self.name)
 
 
-class HookSpec:
-    _handlers = collections.defaultdict(list)
-
+class HookSpecMeta(type):
     @classmethod
-    def hook(cls, f) -> Hook:
+    def __prepare__(metacls, name, bases):
+        # To preserve attribute declaration order in Python 3.5
+        return collections.OrderedDict()
+
+    def __new__(meta, name, bases, dct):
         """
-        Decorator for a hook declaration in a HookSpec class.
+        Hooks can be declared in two ways:
+        1) as methods of a HookSpec class.
+        2) as HookDescriptor's declared in a HookSpec class.
+
+        If a hook is declared as a method, we must replace it with a HookDescriptor here.
+        If declared as a descriptor, we must set its name here.
         """
-        hook_name = f.__name__
 
-        # TODO Maybe should return a descriptor! because we need to have spec instance, not class!
+        clean_dct = collections.OrderedDict()
+        clean_dct['hooks'] = collections.OrderedDict()
 
-        return Hook(hook_name, spec=cls)
+        for k, v in dct.items():
+            if isinstance(v, HookDescriptor):
+                # Hook declared as a descriptor
+                if v.name is None:
+                    # Set name for a hook declared as a nameless descriptor
+                    v.name = k
 
-    @classmethod
-    def register_handler(cls, hook: Hook, handler: Callable):
-        cls._handlers[hook.name].append(handler)
+                clean_dct[k] = v
+                clean_dct['hooks'][k] = v
+
+            elif callable(v) and not k.startswith('_'):
+                # Hook declared as a method, must replace with a descriptor
+                hook_descr = HookDescriptor(k)
+                clean_dct[k] = hook_descr
+                clean_dct['hooks'][k] = hook_descr
+
+            else:
+                # Normal attribute
+                clean_dct[k] = v
+
+        return super().__new__(meta, name, bases, clean_dct)
 
 
-class MyHookSpec(HookSpec):
-    @HookSpec.hook
-    def event1(self):
-        pass
+class HookSpec(metaclass=HookSpecMeta):
+    """
+    All methods of HookSpec whose name does not start with "_" are hooks.
+    """
+    def __init__(self):
+        self._handlers = collections.defaultdict(list)
+        self._triggers = {}
+
+    def _register_handler(self, hook_name, handler):
+        assert hook_name in self.hooks
+        self._handlers[hook_name].append(handler)
+
+    def _get_trigger(self, hook_name):
+        if hook_name not in self._triggers:
+            def trigger(*args, **kwargs):
+                results = [h(*args, **kwargs) for h in self._handlers[hook_name]]
+                return results
+            self._triggers[hook_name] = trigger
+        return self._triggers[hook_name]
 
     def __call__(self, f):
         """
         Decorator for functions and methods whose name tells which hook they are handling.
+        The decorated function is replaced with a trigger for the hook!
         """
         hook_name = f.__name__
-        assert hasattr(self, hook_name)
+        self._register_handler(hook_name, f)
+        return self._get_trigger(hook_name)
+
+
+class MyHookSpec(HookSpec):
+    # Two ways to declare a hook -- as a method or as a descriptor directly.
+    # If as a method then IDE won't be able to tell that it is replaced by a descriptor.
+    # Also less intuitive. So we go with descriptor approach.
+    event1 = HookDescriptor('event1')
+
+    event2 = HookDescriptor('event2')
 
 
 my_hooks = MyHookSpec()
+assert list(my_hooks.hooks) == ['event1', 'event2']
 
 
 class Base:
     @my_hooks
     def event1(self):
-        return 'Base'
+        return 'Base({})'.format(self)
 
 
 class Mixin:
     @my_hooks
     def event1(self):
-        return 'Mixin'
+        return 'Mixin({})'.format(self)
+
+
+assert callable(my_hooks.event1)
+assert isinstance(my_hooks.event1, Hook)
+assert my_hooks.event1.name == 'event1'
 
 
 class Extended(Mixin, Base):
@@ -151,19 +241,21 @@ class Extended(Mixin, Base):
 
     @my_hooks.event1
     def another_handler(self):
-        return 'Another'
+        return 'Another {}'.format(self)
 
 
-@my_hooks.event1
-def external_handler():
-    return 'External'
+# @my_hooks.event1
+# def external_handler():
+#     return 'External'
 
 
-print(my_hooks.__dict__)
-print(MyHookSpec.__dict__)
+ex = Extended()
+print(ex.event1())
 
+ey = Extended()
+print(ey.event1())
 
-# e = Extended()
-# print(Extended.__dict__)
-# print(e.__dict__)
-# e.event1()
+print(ex.event1())
+
+print(ex.another_handler())
+

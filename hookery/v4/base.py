@@ -144,10 +144,10 @@ class HookSpec(metaclass=HookSpecMeta):
         if hook_name not in self.hooks:
             raise ValueError('Unknown hook {!r}'.format(hook_name))
 
-        # Mark the handler so we can distinguish it from hook-named methods that aren't registered.
+        # Mark the handler so we can distinguish it from methods that just happen to have the same name,
+        # but aren't marked as handlers.
         add_to_handler_marker(handler, hook_name)
 
-        print(get_handler_marker(handler))
         assert handles_hook(handler, hook_name)
 
         # TODO Is this even needed now?
@@ -165,12 +165,13 @@ class HookSpec(metaclass=HookSpecMeta):
         return handlers
 
     def _get_trigger(self, hook_name, ctx):
-        if hook_name not in self._triggers:
+        trigger_key = (hook_name, ctx)
+        if trigger_key not in self._triggers:
             def trigger(*args, **kwargs):
                 results = [h(*args, **kwargs) for h in self._get_handlers(hook_name, ctx)]
                 return results
-            self._triggers[hook_name] = trigger
-        return self._triggers[hook_name]
+            self._triggers[trigger_key] = trigger
+        return self._triggers[trigger_key]
 
     def __call__(self, f):
         """

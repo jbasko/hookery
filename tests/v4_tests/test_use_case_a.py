@@ -98,3 +98,16 @@ def test_second_cli_runs(capsys):
 
     assert '--my-first-argument' not in out
     assert '--my-second-argument' in out
+
+
+def test_can_register_instance_specific_handler():
+    cli1 = FirstCli()
+    cli2 = FirstCli()
+
+    # TODO This requires a change! No more use of it as handler registration directly!
+    @cli_hooks.init_parser(cli1)
+    def init_parser(parser):
+        parser.add_argument('--dry-run', action='store_true')
+
+    assert len(cli_hooks._get_handlers('init_parser', cli1)) == 4
+    assert len(cli_hooks._get_handlers('init_parser', cli2)) == 3

@@ -147,16 +147,17 @@ class HookSpecMeta(type):
         Hooks are declared as class variables of a HookSpec class.
         """
 
-        for b in bases:
-            if HookSpec in b.__mro__[1:]:
-                # To handle this we'd have to consult 'hooks' of the base classes.
-                raise RuntimeError(
-                    'HookSpec classes cannot be combined via mixins in this version. '
-                    'Use HookSpec.merge_specs method.'
-                )
-
         clean_dct = collections.OrderedDict()
         clean_dct['hooks'] = collections.OrderedDict()
+
+        for b in bases:
+            # When inheriting from a HookSpec, must make sure that all hooks are inherited too.
+            if HookSpec in b.__mro__[1:]:
+                for k, v in b.hooks.items():
+                    if k in dct:
+                        # Ignore hooks from bases that are overridden in the class itself
+                        continue
+                    clean_dct['hooks'][k] = v
 
         for k, v in dct.items():
             if k == 'hooks':
@@ -279,6 +280,9 @@ class HookSpec(metaclass=HookSpecMeta):
     def merge_specs(self, *specs) -> 'HookSpec':
         """
         Merge multiple specs (classes) into a single instance of HookSpec.
+
+        Note that you can also extend HookSpecs and use them as mixins.
+        Not sure which approach is cleaner.
         """
 
         dct = collections.OrderedDict()

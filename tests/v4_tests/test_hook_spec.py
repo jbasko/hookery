@@ -138,33 +138,30 @@ def test_merged_hook_specs():
     assert all_hooks.after.trigger() == ['global.after']
 
 
-def test_cannot_mixin_two_hook_specs():
+def test_mixin_two_hook_specs():
     class MySpec1(HookSpec):
         before = Hook()
 
     class MySpec2(HookSpec):
         after = Hook()
 
-    with pytest.raises(RuntimeError) as exc:
-        class MySpec(MySpec1, MySpec2):
-            pass
+    class MySpec(MySpec1, MySpec2):
+        pass
 
-    assert 'HookSpec classes cannot be combined via mixins in this version' in str(exc.value)
+    all_hooks = MySpec()
+    assert isinstance(all_hooks.before, BoundHook)
+    assert isinstance(all_hooks.after, BoundHook)
 
-    # all_hooks = MySpec()
-    # assert isinstance(all_hooks.before, BoundHook)
-    # assert isinstance(all_hooks.after, BoundHook)
-    #
-    # @all_hooks.before
-    # def before():
-    #     return 'global.before'
-    #
-    # @all_hooks.after
-    # def handle_after():
-    #     return 'global.after'
-    #
-    # assert len(all_hooks.before.get_handlers()) == 1
-    # assert len(all_hooks.after.get_handlers()) == 1
-    #
-    # assert all_hooks.before.trigger() == ['global.before']
-    # assert all_hooks.after.trigger() == ['global.after']
+    @all_hooks.before
+    def before():
+        return 'global.before'
+
+    @all_hooks.after
+    def handle_after():
+        return 'global.after'
+
+    assert len(all_hooks.before.get_handlers()) == 1
+    assert len(all_hooks.after.get_handlers()) == 1
+
+    assert all_hooks.before.trigger() == ['global.before']
+    assert all_hooks.after.trigger() == ['global.after']

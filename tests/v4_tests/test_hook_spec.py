@@ -111,14 +111,17 @@ def test_global_context_handler_registered_and_called():
     assert my_hooks.before.trigger(Extended()) == ['global1', 'global2']
 
 
-def test_merged_hook_specs():
+def test_inherited_hook_specs():
     class MySpec1(HookSpec):
         before = Hook()
 
-    class MySpec2(HookSpec):
+    class MySpec2(MySpec1):
         after = Hook()
 
-    all_hooks = HookSpec.merge_specs(MySpec1, MySpec2)
+    class MySpec(MySpec2):
+        pass
+
+    all_hooks = MySpec()
 
     assert isinstance(all_hooks.before, BoundHook)
     assert isinstance(all_hooks.after, BoundHook)
@@ -145,7 +148,10 @@ def test_mixin_two_hook_specs():
     class MySpec2(HookSpec):
         after = Hook()
 
-    class MySpec(MySpec1, MySpec2):
+    class Base:
+        pass
+
+    class MySpec(MySpec1, MySpec2, Base):
         pass
 
     all_hooks = MySpec()

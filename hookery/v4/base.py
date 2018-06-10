@@ -275,24 +275,3 @@ class HookSpec(metaclass=HookSpecMeta):
         self.register_handler(hook_name, f, ctx=ImplicitClassContext)
 
         return f
-
-    @classmethod
-    def merge_specs(self, *specs) -> 'HookSpec':
-        """
-        Merge multiple specs (classes) into a single instance of HookSpec.
-
-        Note that you can also extend HookSpecs and use them as mixins.
-        Not sure which approach is cleaner.
-        """
-
-        dct = collections.OrderedDict()
-        for s in specs:
-            for hook_name, hook in s.hooks.items():
-                assert hook_name not in dct
-                dct[hook_name] = hook
-
-        return type(
-            '+'.join(str(s.__name__) for s in specs),
-            (HookSpec,),
-            dct,
-        )()

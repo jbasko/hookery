@@ -63,7 +63,7 @@ class SecondCli(DateLimitMixin, CountLimitMixin, Cli):
 
 def test_first_cli_init():
     cli = FirstCli()
-    handlers = cli_hooks._get_handlers('init_parser', cli)
+    handlers = cli_hooks.get_handlers('init_parser', cli)
     assert handlers == [
         CountLimitMixin.init_parser,
         DateLimitMixin.init_parser,
@@ -82,7 +82,7 @@ def test_first_cli_runs(capsys):
 
 def test_second_cli_init():
     cli = SecondCli()
-    handlers = cli_hooks._get_handlers('init_parser', cli)
+    handlers = cli_hooks.get_handlers('init_parser', cli)
     assert handlers == [
         CountLimitMixin.init_parser,
         DateLimitMixin.init_parser,
@@ -108,5 +108,5 @@ def test_can_register_instance_specific_handler():
     def init_parser(parser):
         parser.add_argument('--dry-run', action='store_true')
 
-    assert len(cli_hooks._get_handlers('init_parser', cli1)) == 4
-    assert len(cli_hooks._get_handlers('init_parser', cli2)) == 3
+    assert len(cli_hooks.get_handlers('init_parser', cli1)) == 4
+    assert len(cli_hooks.get_handlers('init_parser', cli2)) == 3

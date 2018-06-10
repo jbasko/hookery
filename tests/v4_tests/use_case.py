@@ -1,4 +1,4 @@
-from hookery.v4 import BoundHook, HookSpec, Hook
+from hookery.v4 import BoundHook, Hook, HookSpec
 
 
 class MyHookSpec(HookSpec):
@@ -69,7 +69,7 @@ class MySpec2(HookSpec):
     after = Hook()
 
 
-all_hooks = HookSpec._merge_specs(MySpec1, MySpec2)
+all_hooks = HookSpec.merge_specs(MySpec1, MySpec2)
 assert all_hooks.before
 assert all_hooks.after
 

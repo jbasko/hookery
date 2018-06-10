@@ -1,8 +1,25 @@
 import abc
 import collections
-from typing import Union
+import types
+from typing import Any, Callable, Union
 
 from hookery.utils import optional_args_func
+
+
+class _GlobalContext:
+    def __repr__(self):
+        return '<GlobalContext{}>'.format(id(self))
+
+
+GlobalContext = _GlobalContext()
+
+
+class _ImplicitClassContext:
+    def __repr__(self):
+        return '<ImplicitClassContext{}>'.format(id(self))
+
+
+ImplicitClassContext = _ImplicitClassContext()
 
 
 class AbstractHook(abc.ABC):
@@ -15,8 +32,10 @@ class AbstractHook(abc.ABC):
     whenever the event happens irrespective of who it happens to.
     """
 
+    name = None
+
     @abc.abstractmethod
-    def trigger(self, ctx, *args, **kwargs):
+    def trigger(self, ctx=None, *args, **kwargs):
         """
         `ctx` is the object on which the event is happening; it is used to
         determine the class whose handlers should be invoked. It is also
@@ -24,15 +43,14 @@ class AbstractHook(abc.ABC):
         """
         raise NotImplementedError()
 
-    def __call__(self, ctx=None, *args, **kwargs):
-        """
-        Calling a hook instance should create a decorator that registers handlers
-        associated with `ctx` passed to `__call__`.
-
-        Calling without any `ctx` creates a decorator that registers a global handler.
-        A global handler is called irrespective of context in which the event happens.
-        """
+    def __call__(self, ctx_or_func=None, *args, **kwargs):
         raise NotImplementedError()
+
+    def __repr__(self):
+        return '<{} {!r}>'.format(
+            self.__class__.__name__,
+            self.name
+        )
 
 
 class Hook(AbstractHook):
@@ -56,19 +74,10 @@ class Hook(AbstractHook):
     def __set_name__(self, owner, name):  # Python 3.6+
         owner.name = name
 
-    def __repr__(self):
-        return '<{} {!r}>'.format(
-            self.__class__.__name__,
-            self.name
-        )
-
-    def trigger(self, ctx, *args, **kwargs):
-        """
-        Unbound :class:`Hook` instances should not be triggered.
-        """
+    def trigger(self, ctx=None, *args, **kwargs):
         raise RuntimeError('{} instance should not be triggered'.format(self.__class__))
 
-    def __call__(self, ctx=None, *args, **kwargs):
+    def __call__(self, ctx_or_func=None, *args, **kwargs):
         raise RuntimeError(
             'Handler registration decorators should only be '
             'created for hooks bound to a hook specification.'
@@ -84,7 +93,7 @@ class Hook(AbstractHook):
 
 class BoundHook(AbstractHook):
     """
-    A hook that is bound to an instance of hook specification.
+    A hook that is bound to an instance of hook specification (:class:`HookSpec`).
 
     See :class:`Hook`.
     """
@@ -92,18 +101,39 @@ class BoundHook(AbstractHook):
         self.name = name
         self.spec = spec  # type: HookSpec
 
-    def __call__(self, ctx):
+    def __call__(self, ctx=GlobalContext, *args, **kwargs):
         """
         Creates a handler registration function against the ctx object --
         the returned function can be used to register a handler of this hook on the ctx object.
+
+        If `ctx` appears to be a simple function this will register it as a handler
+        in the global context.
         """
+
+        if isinstance(ctx, types.FunctionType):
+            self.spec.register_handler(self.name, ctx, ctx=GlobalContext)
+            return ctx
+
         def register_handler(f):
-            self.spec._register_handler(self.name, f, ctx=ctx)
+            self.spec.register_handler(self.name, f, ctx=ctx)
+
+        # For testing & debugging
+        register_handler.hook_name = self.name
+        register_handler.ctx = ctx
 
         return register_handler
 
-    def trigger(self, ctx, *args, **kwargs):
-        return self.spec._get_trigger(self.name, ctx)(ctx, *args, **kwargs)
+    def trigger(self, ctx=GlobalContext, *args, **kwargs):
+        results = []
+        for handler in self.get_handlers(ctx=ctx):
+            if ctx is not None and ctx is not GlobalContext:
+                results.append(handler(ctx, *args, **kwargs))
+            else:
+                results.append(handler(*args, **kwargs))
+        return results
+
+    def get_handlers(self, ctx=GlobalContext):
+        return self.spec.get_handlers(self.name, ctx)
 
 
 class HookSpecMeta(type):
@@ -114,32 +144,35 @@ class HookSpecMeta(type):
 
     def __new__(meta, name, bases, dct):
         """
-        Hooks can be declared in two ways:
-        1) as methods of a HookSpec class.
-        2) as HookDescriptor's declared in a HookSpec class.
-
-        If a hook is declared as a method, we must replace it with a HookDescriptor here.
-        If declared as a descriptor, we must set its name here.
+        Hooks are declared as class variables of a HookSpec class.
         """
+
+        for b in bases:
+            if HookSpec in b.__mro__[1:]:
+                # To handle this we'd have to consult 'hooks' of the base classes.
+                raise RuntimeError(
+                    'HookSpec classes cannot be combined via mixins in this version. '
+                    'Use HookSpec.merge_specs method.'
+                )
 
         clean_dct = collections.OrderedDict()
         clean_dct['hooks'] = collections.OrderedDict()
 
         for k, v in dct.items():
+            if k == 'hooks':
+                # Skip the placeholder in HookSpec base class.
+                assert v is None
+                continue
+
             if isinstance(v, Hook):
                 # Hook declared as a descriptor
                 if v.name is None:
                     # Set name for a hook declared as a nameless descriptor
+                    # Only needed in Python 3.5
                     v.name = k
 
                 clean_dct[k] = v
                 clean_dct['hooks'][k] = v
-
-            elif callable(v) and not k.startswith('_'):
-                # Hook declared as a method, must replace with a descriptor
-                hook_descr = Hook(k)
-                clean_dct[k] = hook_descr
-                clean_dct['hooks'][k] = hook_descr
 
             else:
                 # Normal attribute
@@ -148,86 +181,102 @@ class HookSpecMeta(type):
         return super().__new__(meta, name, bases, clean_dct)
 
 
-def get_handler_marker(handler):
+def _get_handler_marker(handler):
     marker = getattr(handler, '_hookery_marker', None)
     if marker is None:
         marker = []
     return marker
 
 
-def set_handler_marker(handler, marker):
+def _set_handler_marker(handler, marker):
     setattr(handler, '_hookery_marker', marker)
 
 
-def add_to_handler_marker(handler, hook_name):
-    marker = get_handler_marker(handler)
+def _add_to_handler_marker(handler, hook_name):
+    marker = _get_handler_marker(handler)
     marker.append(hook_name)
-    set_handler_marker(handler, marker)
+    _set_handler_marker(handler, marker)
 
 
-def handles_hook(handler, hook_name):
-    return hook_name in get_handler_marker(handler)
+def _handles_hook(handler, hook_name):
+    return hook_name in _get_handler_marker(handler)
 
 
 class HookSpec(metaclass=HookSpecMeta):
     """
-    Hook specification. Also acts as a hook handler registry.
-    TODO Remove this feature so we can have public methods:
-    All methods of HookSpec whose name does not start with "_" are hooks.
+    :class:`HookSpec` class (and classes derived from it) serve as hook specifications.
+    Instances of this class serve as hook handler registries for handlers without implicit context.
     """
+
+    # Ordered dictionary of all bound hooks. Initialised in :class:`HookSpecMeta`
+    hooks = None  # type: collections.OrderedDict
+
     def __init__(self):
         self._ctx_specific_handlers = collections.defaultdict(list)
-        self._triggers = {}
+        self._triggers_cache = {}
 
-    def _register_handler(self, hook_name, handler, ctx=None):
+    def register_handler(self, hook_name: str, handler: Callable, ctx: Any=GlobalContext):
+        """
+        Register a handler of an event, and optionally specify context to which this handler applies.
+        """
         if hook_name not in self.hooks:
             raise ValueError('Unknown hook {!r}'.format(hook_name))
 
         # Mark the handler so we can distinguish it from methods that just happen to have the same name,
         # but aren't marked as handlers.
-        add_to_handler_marker(handler, hook_name)
+        _add_to_handler_marker(handler, hook_name)
 
-        assert handles_hook(handler, hook_name)
+        assert _handles_hook(handler, hook_name)
 
         # We only store handlers that are associated with a ctx object.
-        if ctx is not None:
+        # `ImplicitClassContext` is a special context that should not be registered handlers for
+        # because these handlers can be found by checking __dict__ of all base classes
+        # in the hook context object's class hierarchy. See :meth:`HookSpec.get_handlers`.
+        if ctx is not None and ctx is not ImplicitClassContext:
             self._ctx_specific_handlers[(ctx, hook_name)].append(optional_args_func(handler))
 
-    def _get_handlers(self, hook_name, ctx):
+    def get_handlers(self, hook_name, ctx=GlobalContext):
+        """
+        Return a list of handlers associated with the named hook in the specified context.
+        """
+
+        # TODO Should cache handlers on the context object.
+
         handlers = []
 
-        # Handlers associated with classes in the class tree of the ctx object
-        for base in reversed(type(ctx).__mro__[:-1]):
-            if hook_name in base.__dict__:
-                handler = base.__dict__[hook_name]
-                if handles_hook(handler, hook_name):
-                    handlers.append(handler)
+        if ctx is not None and ctx is not GlobalContext:
+            # Handlers associated with classes in the class tree of the context object
+            for base in reversed(type(ctx).__mro__[:-1]):
+                if hook_name in base.__dict__:
+                    handler = base.__dict__[hook_name]
+                    if _handles_hook(handler, hook_name):
+                        handlers.append(handler)
 
-        # Handlers associated with the individual ctx object
-        handlers.extend(self._ctx_specific_handlers[(ctx, hook_name)])
+            # Handlers associated with the individual context object
+            handlers.extend(self._ctx_specific_handlers[(ctx, hook_name)])
+
+        # Handlers associated with the GlobalContext
+        handlers.extend(self._ctx_specific_handlers[(GlobalContext, hook_name)])
 
         return handlers
 
-    def _get_trigger(self, hook_name, ctx):
-        trigger_key = (hook_name, ctx)
-        if trigger_key not in self._triggers:
-            def trigger(*args, **kwargs):
-                results = [h(*args, **kwargs) for h in self._get_handlers(hook_name, ctx)]
-                return results
-            self._triggers[trigger_key] = trigger
-        return self._triggers[trigger_key]
-
     def __call__(self, f):
         """
-        Decorator for functions and methods whose name tells which hook they are handling.
-        The decorated function is replaced with a trigger for the hook!
+        Decorator for methods whose name tells which hook they are handling.
+        The decorated function itself is returned.
         """
         hook_name = f.__name__
-        self._register_handler(hook_name, f)
+
+        # Register the handler against the special context which effectively
+        # means the handler is not actually registered in registry -- it will
+        # be found at event trigger time based on the class hierarchy of the
+        # class of the event context object.
+        self.register_handler(hook_name, f, ctx=ImplicitClassContext)
+
         return f
 
     @classmethod
-    def _merge_specs(self, *specs) -> 'HookSpec':
+    def merge_specs(self, *specs) -> 'HookSpec':
         """
         Merge multiple specs (classes) into a single instance of HookSpec.
         """

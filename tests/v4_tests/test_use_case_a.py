@@ -66,10 +66,16 @@ functions:
     def external_handler():
         return 'External Handler'
 
-Questions:
+----
+Update.
 
-    1. Should we replace e.event1 with the new handler that takes all of the above into consideration,
-       or should we instead use something like e.event1.trigger() ?
+We don't replace the functions declared in classes.
+We just register them as handlers.
+Hooks should be triggered with Hook.trigger() method.
+
+----
+
+
 
 Issues:
 
@@ -91,9 +97,11 @@ It's a descriptor. Should be one.
 import collections
 from typing import Type, Union
 
+from hookery.utils import optional_args_func
+
 
 class HookDescriptor:
-    def __init__(self, name: str):
+    def __init__(self, name: str=None):
         self.name = name
 
     @property
@@ -117,6 +125,13 @@ class HookDescriptor:
             self.name
         )
 
+    def trigger(self, *args, **kwargs):
+        """
+        HookDescriptor instances should not be triggered.
+        This is just to help with debugging.
+        """
+        raise RuntimeError('{} instance should not be triggered'.format(self.__class__))
+
 
 class Hook:
     def __init__(self, name: str, spec: 'HookSpec'):
@@ -129,7 +144,10 @@ class Hook:
         The handler being decorated doesn't have to carry the hook's name.
         """
         self.spec._register_handler(self.name, f)
-        return self.spec._get_trigger(self.name)
+        return f
+
+    def trigger(self, *args, **kwargs):
+        return self.spec._get_trigger(self.name)(*args, **kwargs)
 
 
 class HookSpecMeta(type):
@@ -183,8 +201,9 @@ class HookSpec(metaclass=HookSpecMeta):
         self._triggers = {}
 
     def _register_handler(self, hook_name, handler):
-        assert hook_name in self.hooks
-        self._handlers[hook_name].append(handler)
+        if hook_name not in self.hooks:
+            raise ValueError('Unknown hook {!r}'.format(hook_name))
+        self._handlers[hook_name].append(optional_args_func(handler))
 
     def _get_trigger(self, hook_name):
         if hook_name not in self._triggers:
@@ -201,7 +220,25 @@ class HookSpec(metaclass=HookSpecMeta):
         """
         hook_name = f.__name__
         self._register_handler(hook_name, f)
-        return self._get_trigger(hook_name)
+        return f
+
+    @classmethod
+    def _merge_specs(self, *specs) -> 'HookSpec':
+        """
+        Merge multiple specs (classes) into a single instance of HookSpec.
+        """
+
+        dct = collections.OrderedDict()
+        for s in specs:
+            for hook_name, hook in s.hooks.items():
+                assert hook_name not in dct
+                dct[hook_name] = hook
+
+        return type(
+            '+'.join(str(s.__name__) for s in specs),
+            (HookSpec,),
+            dct,
+        )()
 
 
 class MyHookSpec(HookSpec):
@@ -244,18 +281,51 @@ class Extended(Mixin, Base):
         return 'Another {}'.format(self)
 
 
-# @my_hooks.event1
-# def external_handler():
-#     return 'External'
+@my_hooks.event1
+def external_handler():
+    return 'External'
 
 
 ex = Extended()
-print(ex.event1())
+print(my_hooks.event1.trigger(ex))
 
 ey = Extended()
-print(ey.event1())
+print(my_hooks.event1.trigger(ey))
 
-print(ex.event1())
+print(my_hooks.event1.trigger(ex))
 
 print(ex.another_handler())
 
+print('-------------')
+
+
+# TODO Use two hook specs in parallel?
+
+class MySpec1(HookSpec):
+    before = HookDescriptor()
+
+
+class MySpec2(HookSpec):
+    after = HookDescriptor()
+
+
+all_hooks = HookSpec._merge_specs(MySpec1, MySpec2)
+assert all_hooks.before
+assert all_hooks.after
+
+
+class MyClass:
+    @all_hooks
+    def before(self):
+        print('doing before')
+
+    @all_hooks.after
+    def do_after(self):
+        print('doing after')
+
+
+c = MyClass()
+d = MyClass()
+
+all_hooks.before.trigger(c)
+all_hooks.after.trigger(c)

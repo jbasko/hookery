@@ -1,5 +1,6 @@
 import abc
 import collections
+import contextlib
 import types
 from typing import Any, Callable, Union
 
@@ -100,6 +101,7 @@ class BoundHook(AbstractHook):
     def __init__(self, name: str, spec: 'HookSpec'):
         self.name = name
         self.spec = spec  # type: HookSpec
+        self._is_triggering = False
 
     def __call__(self, ctx=GlobalContext, *args, **kwargs):
         """
@@ -123,13 +125,27 @@ class BoundHook(AbstractHook):
 
         return register_handler
 
+    @contextlib.contextmanager
+    def _triggering_ctx(self):
+        """
+        Context manager that ensures that a hook is not re-triggered by one of its handlers.
+        """
+        if self._is_triggering:
+            raise RuntimeError('{} cannot be triggered while it is being handled'.format(self))
+        self._is_triggering = True
+        try:
+            yield self
+        finally:
+            self._is_triggering = False
+
     def trigger(self, ctx=GlobalContext, *args, **kwargs):
         results = []
         for handler in self.get_handlers(ctx=ctx):
-            if ctx is not None and ctx is not GlobalContext:
-                results.append(handler(ctx, *args, **kwargs))
-            else:
-                results.append(handler(*args, **kwargs))
+            with self._triggering_ctx():
+                if ctx is not None and ctx is not GlobalContext:
+                    results.append(handler(ctx, *args, **kwargs))
+                else:
+                    results.append(handler(*args, **kwargs))
         return results
 
     def get_handlers(self, ctx=GlobalContext):

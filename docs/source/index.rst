@@ -7,6 +7,8 @@ hookery
     :caption: Contents:
 
     intro
+    terms
+    api
 
 
 

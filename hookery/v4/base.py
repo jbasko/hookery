@@ -8,6 +8,10 @@ from hookery.utils import optional_args_func
 
 
 class _GlobalContext:
+    """
+    A special object marking global context.
+    """
+
     def __repr__(self):
         return '<GlobalContext{}>'.format(id(self))
 
@@ -23,38 +27,7 @@ class _ImplicitClassContext:
 ImplicitClassContext = _ImplicitClassContext()
 
 
-class AbstractHook(abc.ABC):
-    """
-    Events happen to objects. Events that can be listened to and used to hook into execution
-    of some algorithm are called hooks.
-
-    To hook into a hook, one registers a hook handler. Handlers can be associated with a context
-    explicitly, implicitly, or even be not associated with any context in which case they are called
-    whenever the event happens irrespective of who it happens to.
-    """
-
-    name = None
-
-    @abc.abstractmethod
-    def trigger(self, ctx=None, *args, **kwargs):
-        """
-        `ctx` is the object on which the event is happening; it is used to
-        determine the class whose handlers should be invoked. It is also
-        passed as the first positional argument to the handlers.
-        """
-        raise NotImplementedError()
-
-    def __call__(self, ctx_or_func=None, *args, **kwargs):
-        raise NotImplementedError()
-
-    def __repr__(self):
-        return '<{} {!r}>'.format(
-            self.__class__.__name__,
-            self.name
-        )
-
-
-class Hook(AbstractHook):
+class Hook:
     """
     Represents an unbound hook.
 
@@ -92,7 +65,7 @@ class Hook(AbstractHook):
         return 'hook#{}'.format(self.name)
 
 
-class BoundHook(AbstractHook):
+class BoundHook:
     """
     A hook that is bound to an instance of hook specification (:class:`HookSpec`).
 
@@ -139,6 +112,9 @@ class BoundHook(AbstractHook):
             self._is_triggering = False
 
     def trigger(self, ctx=GlobalContext, *args, **kwargs):
+        """
+        Trigger hook handlers registered against the specified context.
+        """
         results = []
         for handler in self.get_handlers(ctx=ctx):
             with self._triggering_ctx():
@@ -149,6 +125,9 @@ class BoundHook(AbstractHook):
         return results
 
     def get_handlers(self, ctx=GlobalContext):
+        """
+        Returns a list of handlers for this hook associated with the specified context.
+        """
         return self.spec.get_handlers(self.name, ctx)
 
 

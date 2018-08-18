@@ -1,6 +1,7 @@
 #
 # Development-only
 #
+black
 bumpversion==0.5.3
 coverage
 flake8

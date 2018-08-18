@@ -6,8 +6,6 @@ matrix:
   include:
   - python: 3.6
     env: TOXENV=py
-  - python: 3.5
-    env: TOXENV=py
 
 install:
 - pip install tox
@@ -30,4 +28,4 @@ deploy:
     on:
       tags: true
       branch: master
-      python: 3.5
+      python: 3.6

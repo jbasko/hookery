@@ -1,15 +1,4 @@
-__version__ = '3.10.1'
+__version__ = "90.0.0"
 
-from .base import BoundHandler, ClassHook, Handler, Hook, Hookable, HookableMeta, HookDescriptor, InstanceHook, hookable
 
-__all__ = [
-    'BoundHandler',
-    'ClassHook',
-    'Handler',
-    'Hook',
-    'Hookable',
-    'HookableMeta',
-    'HookDescriptor',
-    'InstanceHook',
-    'hookable',
-]
+__all__ = []

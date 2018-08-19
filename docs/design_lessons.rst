@@ -14,3 +14,7 @@ Ability to change them after the creation of the class makes it harder to think 
 If user needs to modify the behaviour of all instances of a class, they should extend the class and use the sub-class.
 If user needs to modify the behaviour of a particular instance, they should register a handler for that particular
 instance.
+
+This also means that calling anything like ``Profile.on_activation`` (or ``Profile.Hooks.on_activation`` and
+other variants) with a function as an argument should return a temporary object, but should not register the handler
+in class ``Profile``.

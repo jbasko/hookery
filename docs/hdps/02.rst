@@ -2,7 +2,17 @@
 HDP 02
 ######
 
-Naive, straight-forward, minimal approach.
+==========
+Main Ideas
+==========
+
+* Declare a class that serves as hook specification -- each its method representing a hook.
+
+===========
+Main Issues
+===========
+
+* TODO
 
 ===
 API
@@ -19,17 +29,25 @@ method ``activate()``:
 
     class Profile(Hookable):
 
-        on_activated = Hook()
+        class Hooks(HookSpec):
+            def on_activated(self):
+                pass
 
         def activate():
-            self.on_activated.trigger()
+            self.hooks.on_activated.trigger()
+
 
 Discussion
 """"""""""
 
-* Must inherit from some parent class ``Hookable`` (or use a class decorator which essentially does
-  the same thing or replaces the class altogether) because later we'll need
-  metaclass-level processing of the hook-able class before it is created.
+* ``Hooks`` class must inherit from some library class because we need ``Hooks.on_activated`` to be prepared
+  before it is used to register handlers inside ``Profile`` body (see below).
+* ``self.hooks`` isn't the same as ``self.Hooks`` -- ``self.Hooks`` refers to the class's hook spec, while
+  ``self.hooks`` is instance's own hook registry.
+* However, if ``Hookable`` declares ``hooks`` then users of an IDE could be confused by both ``Hooks`` and ``hooks``
+  being suggested for auto-complete.
+* Actually, ``self.hooks.on_activated`` won't be auto-completed because the IDE doesn't know that ``self.hooks``
+  is an instance of ``self.Hooks``.
 
 -------------------------------
 Class Hook Handler Registration
@@ -41,18 +59,20 @@ Register two handlers for the ``on_activated`` hook inside ``Profile`` class:
 
     class Profile(Hookable):
 
-        on_activated = Hook()
+        class Hooks(HookSpec):
+            def on_activated(self):
+                pass
 
-        @on_activated
+        @Hooks.on_activated
         def log_activation(self):
             print(f"Activating {self}")
 
-        @on_activated
+        @Hooks.on_activated
         def validate_activation(self):
             print(f"Validating activation of {self}")
 
         def activate():
-            self.on_activated.trigger()
+            self.hooks.on_activated.trigger()
 
 
 --------------------------------------------
@@ -67,7 +87,20 @@ method of the same name registered in ``Profile`` class body as ``Profile.on_act
 
     class CustomProfile(Profile):
 
-        @Profile.on_activated
+        class Hooks(Profile.Hooks):
+            pass
+
+        @Hooks.on_activated
+        def log_activation(self):
+            print(f"Activating CUSTOM {self}")
+
+but also this should work (see discussion below):
+
+.. code-block:: python
+
+    class CustomProfile(Profile):
+
+        @Profile.Hooks.on_activated
         def log_activation(self):
             print(f"Activating CUSTOM {self}")
 
@@ -75,10 +108,9 @@ method of the same name registered in ``Profile`` class body as ``Profile.on_act
 Discussion
 """"""""""
 
-* Ugliness: ``@Profile.on_activated`` suggests we are modifying ``Profile`` class, but we are not.
-* Implementation is complicated by the fact that inside ``CustomProfile`` class body, ``Profile.on_activated``
-  is context-specific. In another class ``AnotherProfile`` it would mean a different thing. This means that
-  this method should return temporary objects which are then handled by the metaclass of ``Profile``.
+* If ``CustomProfile`` declares no hooks of its own, it may look like a lot of boilerplate, but it is clear.
+  The alternative is ``@Profile.Hooks.on_activated``. That means it needs to not register the handler,
+  but instead return some temporary object that is then handled by ``Profile``'s metaclass.
 
 
 -----------------------------
@@ -92,21 +124,22 @@ single handler for it:
 
     class CustomProfile(Profile):
 
-        on_customisation = Hook()
+        class Hooks(Profile.Hooks):
+            def on_customisation(self):
+                pass
 
-        @Profile.on_activated
+        @Hooks.on_activated
         def log_activation(self):
             print(f"Activating CUSTOM {self}")
 
-        @on_customisation
+        @Hooks.on_customisation
         def log_customisation(self):
             print(f"Customising {self}")
 
 Discussion
 """"""""""
 
-* Ugliness: ``@Profile.on_activated`` and ``@on_customisations`` visually seem very different, unrelated to each other,
-  but logically are quite related.
+* If ``CustomProfile`` were to inherit from multiple classes, so would ``CustomProfile.Hooks``.
 
 ----------------------------------
 Instance Hook Handler Registration
@@ -119,14 +152,17 @@ when this particular instance is being activated?
 
     master = Profile()
 
-    @master.on_activated
+    @master.Hooks.on_activated
     def on_master_profile_activated(profile):
         print(f"Activating master profile {profile}")
+
 
 Discussion
 """"""""""
 
-* So, ``master.on_activated`` registers a handler, and ``master.on_activated.trigger`` triggers the hook?
+* ``master.Hooks`` must be bound to the instance, this means ``master.Hooks`` is not the same as ``Profile.Hooks``.
+* Using ``Profile.Hooks.on_activated()`` decorator is not a good idea because
+  that would require user to know what type ``master`` is of.
 
 
 -----------------------
@@ -138,27 +174,19 @@ instance:
 
 .. code-block:: python
 
-    class Profile(Hookable):
-        # .. code skipped ..
-        pass
-
-    class CustomProfile(Profile):
-        # .. code skipped ..
-        pass
-
     # List on_activated handlers associated with all Profile instances
-    print(Profile.on_activated.handlers)
+    print(Profile.Hooks.on_activated.handlers)
 
     # List on_activated handlers associated with all CustomProfile instances
-    print(CustomProfile.on_activated.handlers)
+    print(CustomProfile.Hooks.on_activated.handlers)
 
     p = Profile()
     # List on_activated handlers associated with p
-    print(p.on_activated.handlers)
+    print(p.Hooks.on_activated.handlers)
 
     c = CustomProfile()
     # List on_activated handlers associated with c
-    print(c.on_activated.handlers)
+    print(c.Hooks.on_activated.handlers)
 
 
 =========

@@ -6,14 +6,14 @@ HDP 00
 Main Ideas
 ==========
 
-* Describe which previous HDP this is based on.
-* Describe what changes are you experimenting with.
+* **TODO** Describe which previous HDP this is based on.
+* **TODO** Describe what changes are you experimenting with.
 
 ===========
 Main Issues
 ===========
 
-* Write conclusions here.
+* **TODO** Write conclusions here.
 
 ===
 API
@@ -39,7 +39,7 @@ method ``activate()``:
 Discussion
 """"""""""
 
-* Discuss implications of the design proposed above.
+* **TODO** Discuss implications of the design proposed above.
 
 -------------------------------
 Class Hook Handler Registration
@@ -69,7 +69,7 @@ Register two handlers for the ``on_activated`` hook inside ``Profile`` class:
 Discussion
 """"""""""
 
-* Discuss implications of the design proposed above.
+* **TODO** Discuss implications of the design proposed above.
 
 
 --------------------------------------------
@@ -84,7 +84,7 @@ method of the same name registered in ``Profile`` class body as ``Profile.on_act
 
     class CustomProfile(Profile):
 
-        # TODO register this method as a hook fo Profile.on_activated
+        # TODO register this method as a hook for Profile.on_activated
         def log_activation(self):
             print(f"Activating CUSTOM {self}")
 
@@ -92,7 +92,7 @@ method of the same name registered in ``Profile`` class body as ``Profile.on_act
 Discussion
 """"""""""
 
-* Discuss implications of the design proposed above.
+* **TODO** Discuss implications of the design proposed above.
 
 -----------------------------
 Hook Declaration in Sub-Class
@@ -117,7 +117,7 @@ single handler for it:
 Discussion
 """"""""""
 
-* Discuss implications of the design proposed above.
+* **TODO** Discuss implications of the design proposed above.
 
 ----------------------------------
 Instance Hook Handler Registration
@@ -139,7 +139,7 @@ when this particular instance is being activated?
 Discussion
 """"""""""
 
-* Discuss implications of the design proposed above.
+* **TODO** Discuss implications of the design proposed above.
 
 -----------------------
 Hook Handler Inspection
@@ -172,7 +172,7 @@ instance:
 Discussion
 """"""""""
 
-* Discuss implications of the design proposed above.
+* **TODO** Discuss implications of the design proposed above.
 
 =========
 Questions

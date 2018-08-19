@@ -34,7 +34,7 @@ method ``activate()``:
                 pass
 
         def activate():
-            self.hooks.on_activated.trigger()
+            self.Hooks.on_activated.trigger()
 
 
 Discussion
@@ -42,11 +42,9 @@ Discussion
 
 * ``Hooks`` class must inherit from some library class because we need ``Hooks.on_activated`` to be prepared
   before it is used to register handlers inside ``Profile`` body (see below).
-* ``self.hooks`` isn't the same as ``self.Hooks`` -- ``self.Hooks`` refers to the class's hook spec, while
-  ``self.hooks`` is instance's own hook registry.
-* However, if ``Hookable`` declares ``hooks`` then users of an IDE could be confused by both ``Hooks`` and ``hooks``
-  being suggested for auto-complete.
-* Actually, ``self.hooks.on_activated`` won't be auto-completed because the IDE doesn't know that ``self.hooks``
+* ``self.hooks`` was considered, but if ``Hookable`` declares ``hooks`` then users of an IDE could be confused by both
+  ``Hooks`` and ``hooks`` being suggested for auto-complete.
+* Actually, ``self.hooks.on_activated`` wouldn't be auto-completed because the IDE wouldn't know that ``self.hooks``
   is an instance of ``self.Hooks``.
 
 -------------------------------
@@ -72,7 +70,7 @@ Register two handlers for the ``on_activated`` hook inside ``Profile`` class:
             print(f"Validating activation of {self}")
 
         def activate():
-            self.hooks.on_activated.trigger()
+            self.Hooks.on_activated.trigger()
 
 
 --------------------------------------------

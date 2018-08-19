@@ -12,7 +12,8 @@ Main Ideas
 Main Issues
 ===========
 
-* TODO
+* Can ``Profile.Hooks`` be a class and a descriptor at the same time? Yes, should be replaced during
+  ``Hookable`` sub-class construction.
 
 ===
 API

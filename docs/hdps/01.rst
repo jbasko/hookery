@@ -1,6 +1,8 @@
 ######
-HDP 00
+HDP 01
 ######
+
+Naive, straight-forward, minimal approach.
 
 ===
 API
@@ -14,19 +16,21 @@ Declare a hook called ``on_activated`` for class ``Profile`` and trigger its han
 method ``activate()``:
 
 .. code-block:: python
+    :emphasize-lines: 1,3,6
 
-    class Profile:
+    class Profile(Hookable):
 
-        # TODO declare the on_activated hook
+        on_activated = Hook()
 
         def activate():
-            # TODO trigger the handlers of on_activated hook
-
+            self.on_activated.trigger()
 
 Discussion
 """"""""""
 
-* Discuss implications of the design proposed above.
+* Must inherit from some parent class ``Hookable`` (or use a class decorator which essentially does
+  the same thing or replaces the class altogether) because later we'll need
+  metaclass-level processing of the hook-able class before it is created.
 
 -------------------------------
 Class Hook Handler Registration
@@ -35,28 +39,22 @@ Class Hook Handler Registration
 Register two handlers for the ``on_activated`` hook inside ``Profile`` class:
 
 .. code-block:: python
+    :emphasize-lines: 5-11
 
-    class Profile:
+    class Profile(Hookable):
 
-        # .. hook declaration code skipped ..
+        on_activated = Hook()
 
-        # TODO register this method as a hook
+        @on_activated
         def log_activation(self):
             print(f"Activating {self}")
 
-        # TODO register this method as a hook
+        @on_activated
         def validate_activation(self):
             print(f"Validating activation of {self}")
 
         def activate():
-            # .. hook trigger code skipped ..
-            pass
-
-
-Discussion
-""""""""""
-
-* Discuss implications of the design proposed above.
+            self.on_activated.trigger()
 
 
 --------------------------------------------
@@ -64,14 +62,14 @@ Class Hook Handler Registration in Sub-Class
 --------------------------------------------
 
 Create class ``CustomProfile`` which inherits from ``Profile``. This class should register
-a handler method ``log_activation`` which must not affect
+a handler method called ``log_activation`` which must not affect
 method of the same name registered in ``Profile`` class body as ``Profile.on_activated`` handler:
 
 .. code-block:: python
 
     class CustomProfile(Profile):
 
-        # TODO register this method as a hook fo Profile.on_activated
+        @Profile.on_activated
         def log_activation(self):
             print(f"Activating CUSTOM {self}")
 
@@ -79,7 +77,11 @@ method of the same name registered in ``Profile`` class body as ``Profile.on_act
 Discussion
 """"""""""
 
-* Discuss implications of the design proposed above.
+* Ugliness: ``@Profile.on_activated`` suggests we are modifying ``Profile`` class, but we are not.
+* Implementation is complicated by the fact that inside ``CustomProfile`` class body, ``Profile.on_activated``
+  is context-specific. In another class ``AnotherProfile`` it would mean a different thing. This means that
+  this method should return temporary objects which are then handled by the metaclass of ``Profile``.
+
 
 -----------------------------
 Hook Declaration in Sub-Class
@@ -89,22 +91,25 @@ Add a hook specific to the derived ``CustomProfile`` class -- ``on_customisation
 single handler for it:
 
 .. code-block:: python
+    :emphasize-lines: 3,9-11
 
     class CustomProfile(Profile):
 
-        # .. code skipped ..
+        on_customisation = Hook()
 
-        # TODO declare hook "on_customisation"
+        @Profile.on_activated
+        def log_activation(self):
+            print(f"Activating CUSTOM {self}")
 
-        # TODO register this method as a handler for "on_customisation"
+        @on_customisation
         def log_customisation(self):
             print(f"Customising {self}")
-
 
 Discussion
 """"""""""
 
-* Discuss implications of the design proposed above.
+* Ugliness: ``@Profile.on_activated`` and ``@on_customisations`` visually seem very different, unrelated to each other,
+  but logically are quite related.
 
 ----------------------------------
 Instance Hook Handler Registration
@@ -117,16 +122,15 @@ when this particular instance is being activated?
 
     master = Profile()
 
+    @master.on_activated
     def on_master_profile_activated(profile):
         print(f"Activating master profile {profile}")
-
-    # TODO Register on_master_profile_activated as Profile.on_activated handler for master only.
-
 
 Discussion
 """"""""""
 
-* Discuss implications of the design proposed above.
+* So, ``master.on_activated`` registers a handler, and ``master.on_activated.trigger`` triggers the hook?
+
 
 -----------------------
 Hook Handler Inspection
@@ -145,21 +149,20 @@ instance:
         # .. code skipped ..
         pass
 
-    # TODO List on_activated handlers associated with all Profile instances
+    # List on_activated handlers associated with all Profile instances
+    print(Profile.on_activated.handlers)
 
-    # TODO List on_activated handlers associated with all CustomProfile instances
+    # List on_activated handlers associated with all CustomProfile instances
+    print(CustomProfile.on_activated.handlers)
 
     p = Profile()
-    # TODO List on_activated handlers associated with p
+    # List on_activated handlers associated with p
+    print(p.on_activated.handlers)
 
     c = CustomProfile()
-    # TODO List on_activated handlers associated with c
+    # List on_activated handlers associated with c
+    print(c.on_activated.handlers)
 
-
-Discussion
-""""""""""
-
-* Discuss implications of the design proposed above.
 
 =========
 Questions

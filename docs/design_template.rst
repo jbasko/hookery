@@ -2,6 +2,19 @@
 HDP 00
 ######
 
+==========
+Main Ideas
+==========
+
+* Describe which previous HDP this is based on.
+* Describe what changes are you experimenting with.
+
+===========
+Main Issues
+===========
+
+* Write conclusions here.
+
 ===
 API
 ===

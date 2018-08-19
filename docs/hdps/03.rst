@@ -6,14 +6,13 @@ HDP 03
 Main Ideas
 ==========
 
-* Describe which previous HDP this is based on.
-* Describe what changes are you experimenting with.
+* Explore the global functions approach.
 
 ===========
 Main Issues
 ===========
 
-* Write conclusions here.
+* It is actually quite clean and straight-forward.
 
 ===
 API
@@ -30,16 +29,17 @@ method ``activate()``:
 
     class Profile:
 
-        # TODO declare the on_activated hook
+        on_activated = Hook()
 
-        def activate():
-            # TODO trigger the handlers of on_activated hook
+        def activate(self):
+            hooks.trigger(self.on_activated, *args, **kwargs)
 
 
 Discussion
 """"""""""
 
-* Discuss implications of the design proposed above.
+* ``Profile.on_activated`` is an unbound hook, whereas ``self.on_activated`` is bound to the instance of ``Profile``
+  therefore ``hooks.trigger`` should be able to work out the subject of the hook -- ``self``.
 
 -------------------------------
 Class Hook Handler Registration
@@ -51,20 +51,18 @@ Register two handlers for the ``on_activated`` hook inside ``Profile`` class:
 
     class Profile:
 
-        # .. hook declaration code skipped ..
+        on_activated = Hook()
 
-        # TODO register this method as a hook
+        @on_activated
         def log_activation(self):
             print(f"Activating {self}")
 
-        # TODO register this method as a hook
+        @on_activated
         def validate_activation(self):
-            print(f"Validating activation of {self}")
+            print(f"Validating {self}")
 
-        def activate():
-            # .. hook trigger code skipped ..
-            pass
-
+        def activate(self):
+            hooks.trigger(self.on_activated, *args, **kwargs)
 
 Discussion
 """"""""""
@@ -84,7 +82,7 @@ method of the same name registered in ``Profile`` class body as ``Profile.on_act
 
     class CustomProfile(Profile):
 
-        # TODO register this method as a hook fo Profile.on_activated
+        @Profile.on_activated
         def log_activation(self):
             print(f"Activating CUSTOM {self}")
 
@@ -105,11 +103,13 @@ single handler for it:
 
     class CustomProfile(Profile):
 
-        # .. code skipped ..
+        on_customisation = Hook()
 
-        # TODO declare hook "on_customisation"
+        @Profile.on_activated
+        def log_activation(self):
+            print(f"Activating CUSTOM {self}")
 
-        # TODO register this method as a handler for "on_customisation"
+        @on_customisation
         def log_customisation(self):
             print(f"Customising {self}")
 
@@ -130,10 +130,9 @@ when this particular instance is being activated?
 
     master = Profile()
 
+    @master.on_activation
     def on_master_profile_activated(profile):
         print(f"Activating master profile {profile}")
-
-    # TODO Register on_master_profile_activated as Profile.on_activated handler for master only.
 
 
 Discussion
@@ -158,15 +157,19 @@ instance:
         # .. code skipped ..
         pass
 
-    # TODO List on_activated handlers associated with all Profile instances
+    # List on_activated handlers associated with all Profile instances
+    hooks.get_handlers(Profile.on_activated)
 
-    # TODO List on_activated handlers associated with all CustomProfile instances
+    # List on_activated handlers associated with all CustomProfile instances
+    hooks.get_handlers(CustomProfile.on_activated)
 
     p = Profile()
-    # TODO List on_activated handlers associated with p
+    # List on_activated handlers associated with p
+    hooks.get_handlers(p.on_activated)
 
     c = CustomProfile()
-    # TODO List on_activated handlers associated with c
+    # List on_activated handlers associated with c
+    hooks.get_handlers(c.on_activated)
 
 
 Discussion

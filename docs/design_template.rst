@@ -1,6 +1,14 @@
-#######
-HDP 000
-#######
+######
+HDP 00
+######
+
+===
+API
+===
+
+----------------
+Hook Declaration
+----------------
 
 Declare a hook called ``on_activated`` for class ``Profile`` and trigger its handlers from
 method ``activate()``:
@@ -14,6 +22,9 @@ method ``activate()``:
         def activate():
             # TODO trigger the handlers of on_activated hook
 
+-------------------------------
+Class Hook Handler Registration
+-------------------------------
 
 Register two handlers for the ``on_activated`` hook inside ``Profile`` class:
 
@@ -34,3 +45,113 @@ Register two handlers for the ``on_activated`` hook inside ``Profile`` class:
         def activate():
             # .. hook trigger code skipped ..
             pass
+
+--------------------------------------------
+Class Hook Handler Registration in Sub-Class
+--------------------------------------------
+
+Create class ``CustomProfile`` which inherits from ``Profile``. This class should register
+a handler method ``log_activation`` which must not affect
+method of the same name registered in ``Profile`` class body as ``Profile.on_activated`` handler:
+
+.. code-block:: python
+
+    class CustomProfile(Profile):
+
+        # TODO register this method as a hook fo Profile.on_activated
+        def log_activation(self):
+            print(f"Activating CUSTOM {self}")
+
+
+-----------------------------
+Hook Declaration in Sub-Class
+-----------------------------
+
+Add a hook specific to the derived ``CustomProfile`` class -- ``on_customisation`` and register a
+single handler for it:
+
+.. code-block:: python
+
+    class CustomProfile(Profile):
+
+        # .. code skipped ..
+
+        # TODO declare hook "on_customisation"
+
+        # TODO register this method as a handler for "on_customisation"
+        def log_customisation(self):
+            print(f"Customising {self}")
+
+
+----------------------------------
+Instance Hook Handler Registration
+----------------------------------
+
+Given ``p``, an instance of ``Profile``, how do I register a handler for ``on_activated`` which will be called only
+when this particular instance is being activated?
+
+.. code-block:: python
+
+    master = Profile()
+
+    def on_master_profile_activated(profile):
+        print(f"Activating master profile {profile}")
+
+    # TODO Register on_master_profile_activated as Profile.on_activated handler for master only.
+
+
+-----------------------
+Hook Handler Inspection
+-----------------------
+
+Handler inspection. Print a list of all registered handlers for a given hook with respect to the class, or a concrete
+instance:
+
+.. code-block:: python
+
+    class Profile:
+        # .. code skipped ..
+        pass
+
+    class CustomProfile(Profile):
+        # .. code skipped ..
+
+    # TODO List on_activated handlers associated with all Profile instances
+
+    # TODO List on_activated handlers associated with all CustomProfile instances
+
+    p = Profile()
+    # TODO List on_activated handlers associated with p
+
+    c = CustomProfile()
+    # TODO List on_activated handlers associated with c
+
+
+=========
+Questions
+=========
+
+1. Where are the registered class hook handlers stored?
+
+2. Where are the registered instance hook handlers stored?
+
+3. All hook handlers are instance methods. How is the first argument of these methods, ``self``, reliably populated
+   from wherever the hook is triggered?
+
+4. What happens when user creates a new class ``CustomProfile`` which inherits from class ``Profile``
+   and in the new class declares method with the same name as a hook declared in its parent class -- ``on_activated``?
+
+5. What is returned by ``Profile.on_activated``?
+
+6. What is returned by ``CustomProfile.on_activated``?
+
+7. What happens when ``Profile.on_activated()`` is called from outside ``Profile`` body?
+
+5. What happens when ``CustomProfile.on_activated()`` is called from outside ``CustomProfile`` body?
+
+6. What happens when ``Profile().on_activated()`` is called?
+
+7. What happens when ``CustomProfile().on_activated()`` is called?
+
+8. What happens to all of the above when class ``CombinedProfile`` inherits from
+   ``FirstProfile`` and ``SecondProfile`` both of which inherit from ``Profile``?

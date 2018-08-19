@@ -40,12 +40,40 @@ A user extending the ``Profile`` class or using instances of it should have the 
 
         # Specify additional hooks that this custom profile exposes.
 
+----------------------
+Instance Hook Handlers
+----------------------
+
+Allow registration of a handler associated with a single instance of ``Profile``.
+
+This would be the only way to register a handler when user is in no control of which class is used to build
+their profile instances. If they cannot specify their ``CustomProfile`` class in which they would register
+handlers then all they can do is register handlers for individual instances of ``Profile``.
+
+.. code-block:: python
+
+    # Yes, a "free-standing" function
+    def log_activation(profile):
+        print(f"Activating {profile}")
+
+    # This syntax is just an example, it could be done differently!
+    p1 = Profile()
+    p1.on_activated.register_handler(log_activation)
+
+    p2 = Profile()
+    # p2 doesn't have log_activation registered as a handler
+
+-----------------------
+Hook Handler Inspection
+-----------------------
+
+User should be able to inspect all registered hook handlers for a class and for an instance.
 
 --------------------
 Required Limitations
 --------------------
 
-1. No Handler Registration Outside Class Body
+1. No Class-Associated Handler Registration Outside Class Body
 
    It should not be allowed to register functions that are not instance methods as hook handlers because it complicates
    thinking about the class functionality. The class's behaviour then depends on what handlers have been loaded.
@@ -82,21 +110,20 @@ Required Limitations
 Not Requirements
 ****************
 
-1. There is no requirement to allow registering a handler associated with a single instance of ``Profile``
-   class, but if it can be done, why not!
+1. There is no requirement to allow registering methods decorated with ``@classmethod`` or ``@staticmethod`` as handlers.
 
-.. code-block:: python
+******************
+Later Requirements
+******************
 
-    # Yes, a "free-standing" function
-    def log_activation(profile):
-        print(f"Activating {profile}")
+1. Optional-argument-functions as hook handlers. Handler should be able to specify any arguments that it needs and
+   not mention others.
 
-    # This syntax is just an example, it could be done differently!
-    p1 = Profile()
-    p1.on_activated.register_handler(log_activation)
+2. Hooks of different types -- multi-value, no-return, middleware, mapping. There is probably no need for
+   a first-value or a last-value hook:
 
-    p2 = Profile()
-    # p2 doesn't have log_activation registered as a handler
+   a. last-value hook, as we understand it, would only call and return the value returned by the last registered
+      handler. This is the case with a normal instance method when user can choose to override a method and
+      not call ``super()``, or even replace the method on the instance in question.
 
-
-2. There is no requirement to allow registering methods decorated with ``@classmethod`` or ``@staticmethod`` as handlers.
+   b. first-value hook has no practical value -- it means do not override the method in question.

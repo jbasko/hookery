@@ -91,8 +91,17 @@ Discussion
 """"""""""
 
 * The attributes backing ``Profile.on_activated`` and ``CustomProfile.on_activated`` should be completely separate.
-  The canonical descriptor ``__get__`` implementation would the same for attribute for all descendants of ``Profile``,
-  but it is no good for us because we need to distinguish between classes for which the handlers are registered.
+  The canonical descriptor ``__get__`` implementation would return the same for attribute for all descendants
+  of ``Profile``, but it is no good for us because we need to distinguish between classes for which the handlers
+  are registered.
+* Now, it is important to ensure that ``log_activation`` is registered as a handler only for ``CustomProfile`` and
+  its sub-classes and not for other sub-classes of ``Profile``.
+
+  How to do that? At the time when we register ``log_activation``,
+  there is no class ``CustomProfile``. **We must store this handler separately and then determine at trigger time
+  if it relates to the class or instance on which the hook is triggered.**
+
+  Is it doable?
 
 
 -----------------------------
@@ -218,7 +227,7 @@ Questions
 
 * How is it ensured that class associated handlers cannot be registered after the class has been created?
 
-  We use ``__set_name__`` hook to mark ``Hook`` instance as finalised after which hook handlers
+  We use ``__set_name__`` to mark ``Hook`` instance as finalised after which handlers
   cannot be registered with it. This means that the instance is used for handler registration only
   for the duration of class body parsing in which the hook was declared.
 

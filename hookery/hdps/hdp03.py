@@ -1,10 +1,14 @@
 class hooks:  # Just to simulate a module called "hooks"
-    @staticmethod
-    def trigger(bound_hook, *args, **kwargs):
-        raise NotImplementedError()
 
     @staticmethod
-    def get_handlers(hook):
+    def get_handlers(hook: "BoundHook"):
+        return hook.get_handlers()
+
+    @staticmethod
+    def trigger(hook: "BoundHook", *args, **kwargs):
+        assert isinstance(hook, InstanceHook)
+        print(f"Triggering {hook}")
+        print(hooks.get_handlers(hook))
         raise NotImplementedError()
 
 
@@ -13,21 +17,43 @@ class HookBase:
 
 
 class BoundHook(HookBase):
-    def __init__(self, hook, owner):
-        self._hook = hook
+    def __init__(self, hook: "Hook", owner):
+        self._hook = hook  # type: Hook
         self._owner = owner
 
     def __call__(self, *args, **kwargs):
+        raise NotImplementedError()
+
+    @property
+    def name(self):
+        return self._hook.name
+
+    def get_handlers(self):
+        """
+        Handlers can come from:
+        1) the class in which the hook is declared
+        2) subclass_handlers
+        3) instance_handlers if hook is an InstanceHook
+        """
         raise NotImplementedError()
 
 
 class ClassHook(BoundHook):
     def __init__(self, hook, owner):
         super().__init__(hook, owner)
-        self._class_handlers = []
+
+        # Subclass handlers do not apply to the instances of this class but only
+        # to the instances of its subclasses.
+        self._subclass_handlers = []
 
     def __call__(self, func):
-        self._class_handlers.append(func)
+        """
+        You cannot register handlers on a class that has already been created.
+        Handlers registered in this way will only apply to sub-classes of this class.
+        """
+        self._subclass_handlers.append(func)
+        setattr(func, '_is_subclass_handler', True)
+        return func
 
 
 class InstanceHook(BoundHook):
@@ -37,6 +63,16 @@ class InstanceHook(BoundHook):
 
     def __call__(self, func):
         self._instance_handlers.append(func)
+
+    @property
+    def class_hook(self) -> ClassHook:
+        return getattr(self._owner.__class__, self.name)
+
+    def get_handlers(self):
+        print(self._hook._owner_handlers)
+        print(self.class_hook._subclass_handlers)
+        print(self._instance_handlers)
+        raise NotImplementedError()
 
 
 class Hook(HookBase):
@@ -102,7 +138,7 @@ class CustomProfile(Profile):
     on_customisation = Hook()
 
     @Profile.on_activated
-    def log_activation(self):
+    def log_activation_by_custom_profile(self):
         print(f"Activating CUSTOM {self}")
 
     @on_customisation
@@ -110,27 +146,35 @@ class CustomProfile(Profile):
         print(f"Customising {self}")
 
 
-master = Profile()
+# print('Profile')
+# print(Profile.on_activated.__dict__)
+# print(Profile.on_activated._hook.__dict__)
+#
+# print('CustomProfile')
+# print(CustomProfile.on_activated.__dict__)
+# print(CustomProfile.on_activated._hook.__dict__)
+
+master = CustomProfile()
 
 
-@master.on_activated
-def on_master_profile_activated(profile):
-    print(f"Activating master profile {profile}")
+# @master.on_activated
+# def on_master_profile_activated(profile):
+#     print(f"Activating master profile {profile}")
 
 
 master.activate()
 
 
-# List on_activated handlers associated with all Profile instances
-print(hooks.get_handlers(Profile.on_activated))
-
-# List on_activated handlers associated with all CustomProfile instances
-print(hooks.get_handlers(CustomProfile.on_activated))
-
-p = Profile()
-# List on_activated handlers associated with p
-print(hooks.get_handlers(p.on_activated))
-
-c = CustomProfile()
-# List on_activated handlers associated with c
-print(hooks.get_handlers(c.on_activated))
+# # List on_activated handlers associated with all Profile instances
+# print(hooks.get_handlers(Profile.on_activated))
+#
+# # List on_activated handlers associated with all CustomProfile instances
+# print(hooks.get_handlers(CustomProfile.on_activated))
+#
+# p = Profile()
+# # List on_activated handlers associated with p
+# print(hooks.get_handlers(p.on_activated))
+#
+# c = CustomProfile()
+# # List on_activated handlers associated with c
+# print(hooks.get_handlers(c.on_activated))

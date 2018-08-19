@@ -22,6 +22,12 @@ method ``activate()``:
         def activate():
             # TODO trigger the handlers of on_activated hook
 
+
+Discussion
+""""""""""
+
+* Discuss implications of the design proposed above.
+
 -------------------------------
 Class Hook Handler Registration
 -------------------------------
@@ -46,6 +52,13 @@ Register two handlers for the ``on_activated`` hook inside ``Profile`` class:
             # .. hook trigger code skipped ..
             pass
 
+
+Discussion
+""""""""""
+
+* Discuss implications of the design proposed above.
+
+
 --------------------------------------------
 Class Hook Handler Registration in Sub-Class
 --------------------------------------------
@@ -62,6 +75,11 @@ method of the same name registered in ``Profile`` class body as ``Profile.on_act
         def log_activation(self):
             print(f"Activating CUSTOM {self}")
 
+
+Discussion
+""""""""""
+
+* Discuss implications of the design proposed above.
 
 -----------------------------
 Hook Declaration in Sub-Class
@@ -83,6 +101,11 @@ single handler for it:
             print(f"Customising {self}")
 
 
+Discussion
+""""""""""
+
+* Discuss implications of the design proposed above.
+
 ----------------------------------
 Instance Hook Handler Registration
 ----------------------------------
@@ -99,6 +122,11 @@ when this particular instance is being activated?
 
     # TODO Register on_master_profile_activated as Profile.on_activated handler for master only.
 
+
+Discussion
+""""""""""
+
+* Discuss implications of the design proposed above.
 
 -----------------------
 Hook Handler Inspection
@@ -126,6 +154,11 @@ instance:
     c = CustomProfile()
     # TODO List on_activated handlers associated with c
 
+
+Discussion
+""""""""""
+
+* Discuss implications of the design proposed above.
 
 =========
 Questions

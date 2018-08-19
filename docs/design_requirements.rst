@@ -40,6 +40,40 @@ A user extending the ``Profile`` class or using instances of it should have the 
 
         # Specify additional hooks that this custom profile exposes.
 
+---------------
+Interface Style
+---------------
+
+There are two main ways to invoke the functionality we want:
+
+* Instance attributes, instance methods
+
+  .. code-block:: python
+
+      from hookery import Hookable
+
+      class Profile(Hookable):
+          def activate(self):
+              # many different ways ...
+
+  To intercept any instance method calls we'd have to control the creation of the class and that means
+  having a common base-class, or requiring the classes to be decorated with our decorator.
+
+* Global functions which take any instances or classes as arguments and work out hooks and handlers
+  at hook trigger time:
+
+  .. code-block:: python
+
+      from hookery import hooks
+
+      class Profile:
+          def activate(self):
+              # or perhaps hooks.trigger(self.on_activated, *args, **kwargs) ?
+              hooks.trigger('on_activated', self, *args, **kwargs)
+
+
+The global functions approach is more flexible, seems simpler, and has so far been overlooked.
+
 ----------------------
 Instance Hook Handlers
 ----------------------

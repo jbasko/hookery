@@ -3,6 +3,18 @@ Design Lessons
 ##############
 
 
+----------------------------
+Inheriting from ``Hookable``
+----------------------------
+
+If we are doing the instance methods interface, we must either inherit from some parent class which has a custom
+metaclass or we must require a class decorator which would make the class actually do the same thing. This is because
+we need to be in control of the class creation.
+
+With global functions interface this is most likely not required.
+Probably everything can be achieved with descriptors but must be careful about attributes backed by descriptors
+not being auto-initialised.
+
 -------------------------------------------------------
 No Class Hook Handler Registration After Class Creation
 -------------------------------------------------------

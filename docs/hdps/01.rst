@@ -24,12 +24,6 @@ method ``activate()``:
         def activate():
             self.on_activated.trigger()
 
-Discussion
-""""""""""
-
-* Must inherit from some parent class ``Hookable`` (or use a class decorator which essentially does
-  the same thing or replaces the class altogether) because later we'll need
-  metaclass-level processing of the hook-able class before it is created.
 
 -------------------------------
 Class Hook Handler Registration
@@ -72,14 +66,6 @@ method of the same name registered in ``Profile`` class body as ``Profile.on_act
             print(f"Activating CUSTOM {self}")
 
 
-Discussion
-""""""""""
-
-* Ugliness: ``@Profile.on_activated`` suggests we are modifying ``Profile`` class, but we are not.
-* Implementation is complicated by the fact that inside ``CustomProfile`` class body, ``Profile.on_activated``
-  is context-specific. In another class ``AnotherProfile`` it would mean a different thing. This means that
-  this method should return temporary objects which are then handled by the metaclass of ``Profile``.
-
 
 -----------------------------
 Hook Declaration in Sub-Class
@@ -102,11 +88,6 @@ single handler for it:
         def log_customisation(self):
             print(f"Customising {self}")
 
-Discussion
-""""""""""
-
-* Ugliness: ``@Profile.on_activated`` and ``@on_customisations`` visually seem very different, unrelated to each other,
-  but logically are quite related.
 
 ----------------------------------
 Instance Hook Handler Registration
@@ -122,11 +103,6 @@ when this particular instance is being activated?
     @master.on_activated
     def on_master_profile_activated(profile):
         print(f"Activating master profile {profile}")
-
-Discussion
-""""""""""
-
-* So, ``master.on_activated`` registers a handler, and ``master.on_activated.trigger`` triggers the hook?
 
 
 -----------------------

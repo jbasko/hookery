@@ -1,16 +1,69 @@
 class hooks:  # Just to simulate a module called "hooks"
     @staticmethod
     def trigger(bound_hook, *args, **kwargs):
-        pass
+        raise NotImplementedError()
 
     @staticmethod
     def get_handlers(hook):
-        return []
+        raise NotImplementedError()
 
 
-class Hook:
+class HookBase:
+    pass
+
+
+class BoundHook(HookBase):
+    def __init__(self, hook, owner):
+        self._hook = hook
+        self._owner = owner
+
     def __call__(self, *args, **kwargs):
-        return args[0]
+        raise NotImplementedError()
+
+
+class ClassHook(BoundHook):
+    def __init__(self, hook, owner):
+        super().__init__(hook, owner)
+        self._class_handlers = []
+
+    def __call__(self, func):
+        self._class_handlers.append(func)
+
+
+class InstanceHook(BoundHook):
+    def __init__(self, hook, owner):
+        super().__init__(hook, owner)
+        self._instance_handlers = []
+
+    def __call__(self, func):
+        self._instance_handlers.append(func)
+
+
+class Hook(HookBase):
+    def __init__(self):
+        self.name = None
+        self._owner_handlers = []
+
+    def __set_name__(self, owner, name):
+        self.name = name
+
+    def __call__(self, func):
+        self._owner_handlers.append(func)
+
+    @property
+    def _name_in_dict(self):
+        assert self.name
+        return f"hook#{self.name}"
+
+    def __get__(self, instance, owner) -> BoundHook:
+        if instance is None:
+            if self._name_in_dict not in owner.__dict__:
+                setattr(owner, self._name_in_dict, ClassHook(hook=self, owner=owner))
+            return getattr(owner, self._name_in_dict)
+        else:
+            if self._name_in_dict not in instance.__dict__:
+                setattr(instance, self._name_in_dict, InstanceHook(hook=self, owner=instance))
+            return getattr(instance, self._name_in_dict)
 
 
 class Profile:
@@ -46,6 +99,9 @@ master = Profile()
 @master.on_activated
 def on_master_profile_activated(profile):
     print(f"Activating master profile {profile}")
+
+
+master.activate()
 
 
 # List on_activated handlers associated with all Profile instances

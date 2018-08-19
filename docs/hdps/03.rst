@@ -90,7 +90,10 @@ method of the same name registered in ``Profile`` class body as ``Profile.on_act
 Discussion
 """"""""""
 
-* Discuss implications of the design proposed above.
+* The attributes backing ``Profile.on_activated`` and ``CustomProfile.on_activated`` should be completely separate.
+  The canonical descriptor ``__get__`` implementation would the same for attribute for all descendants of ``Profile``,
+  but it is no good for us because we need to distinguish between classes for which the handlers are registered.
+
 
 -----------------------------
 Hook Declaration in Sub-Class
@@ -182,6 +185,9 @@ Questions
 =========
 
 * Where are the registered class hook handlers stored?
+
+  In the unbound ``Hook`` instance. As we are using a descriptor, it might not be initialised for some ancestor classes
+  or the class itself.
 
 * Where are the registered instance hook handlers stored?
 

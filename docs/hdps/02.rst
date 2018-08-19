@@ -6,7 +6,7 @@ HDP 02
 Main Ideas
 ==========
 
-* Declare a class that serves as hook specification -- each its method representing a hook.
+* Declare a class (extends ``HookSpec``) that serves as hook specification -- each its method representing a hook.
 
 ===========
 Main Issues
@@ -14,6 +14,9 @@ Main Issues
 
 * Can ``Profile.Hooks`` be a class and a descriptor at the same time? Yes, should be replaced during
   ``Hookable`` sub-class construction.
+* In ``Profile.activate``, IDE will complain about ``trigger()`` in ``self.Hooks.on_activated.trigger()``
+  because it does not see the magic that replaces ``Hooks``.
+  It would be cleaner to trigger the hook with ``self.Hooks.on_activated()``.
 
 ===
 API
@@ -194,7 +197,12 @@ Questions
 
 * Where are the registered class hook handlers stored?
 
+  ``Hookable.Hooks.<hook_name>.handlers`` -- hooks and handlers are all finalised by the time class is created.
+
 * Where are the registered instance hook handlers stored?
+
+  ``Hookable().Hooks.<hook_name>.handlers`` -- ??? We don't want to duplicate class hook handlers in each instance.
+  Does it mean we'd have to look up class-associated handlers and then instance-associated handlers in ``trigger()``?
 
 * All hook handlers are instance methods. How is the first argument of these methods, ``self``, reliably populated
   from wherever the hook is triggered?

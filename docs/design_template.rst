@@ -204,3 +204,5 @@ Questions
   ``FirstProfile`` and ``SecondProfile`` both of which inherit from ``Profile``?
 
 * How to list all hooks available for a given class?
+
+* How is it ensured that class associated handlers cannot be registered after the class has been created?

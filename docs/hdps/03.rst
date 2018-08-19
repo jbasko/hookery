@@ -186,6 +186,8 @@ Questions
 
 * Where are the registered class hook handlers stored?
 
+  **TODO** During the
+
   In the unbound ``Hook`` instance. As we are using a descriptor, it might not be initialised for some ancestor classes
   or the class itself.
 
@@ -213,3 +215,12 @@ Questions
   ``FirstProfile`` and ``SecondProfile`` both of which inherit from ``Profile``?
 
 * How to list all hooks available for a given class?
+
+* How is it ensured that class associated handlers cannot be registered after the class has been created?
+
+  We use ``__set_name__`` hook to mark ``Hook`` instance as finalised after which hook handlers
+  cannot be registered with it. This means that the instance is used for handler registration only
+  for the duration of class body parsing in which the hook was declared.
+
+  In descendants of the class in which the hook is declared, the attribute with the hook's name resolves to
+  a different object which is **bound to what????**

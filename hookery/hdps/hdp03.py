@@ -40,14 +40,31 @@ class InstanceHook(BoundHook):
 
 
 class Hook(HookBase):
+    """
+    Unbound hook.
+
+    These objects are mutable only for the duration of class body parsing in which they are declared.
+    Once class is ready (the owner for this object is set via ``__set_name__`` hook),
+    no more handlers can be registered.
+    """
+
     def __init__(self):
         self.name = None
+        self._owner = None
         self._owner_handlers = []
 
     def __set_name__(self, owner, name):
         self.name = name
 
+        # Setting of the owner marks the end of mutability for this object.
+        self._owner = owner
+
     def __call__(self, func):
+        """
+        Register handler
+        """
+        if self._owner is not None:
+            raise RuntimeError(f"Cannot register handlers on a finalised {self}")
         self._owner_handlers.append(func)
 
     @property

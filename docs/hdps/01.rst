@@ -138,7 +138,7 @@ instance:
 
 .. code-block:: python
 
-    class Profile:
+    class Profile(Hookable):
         # .. code skipped ..
         pass
 
@@ -165,27 +165,29 @@ instance:
 Questions
 =========
 
-1. Where are the registered class hook handlers stored?
+* Where are the registered class hook handlers stored?
 
-2. Where are the registered instance hook handlers stored?
+* Where are the registered instance hook handlers stored?
 
-3. All hook handlers are instance methods. How is the first argument of these methods, ``self``, reliably populated
-   from wherever the hook is triggered?
+* All hook handlers are instance methods. How is the first argument of these methods, ``self``, reliably populated
+  from wherever the hook is triggered?
 
-4. What happens when user creates a new class ``CustomProfile`` which inherits from class ``Profile``
-   and in the new class declares method with the same name as a hook declared in its parent class -- ``on_activated``?
+* What happens when user creates a new class ``CustomProfile`` which inherits from class ``Profile``
+  and in the new class declares method with the same name as a hook declared in its parent class -- ``on_activated``?
 
-5. What is returned by ``Profile.on_activated``?
+* What is returned by ``Profile.on_activated``?
 
-6. What is returned by ``CustomProfile.on_activated``?
+* What is returned by ``CustomProfile.on_activated``?
 
-7. What happens when ``Profile.on_activated()`` is called from outside ``Profile`` body?
+* What happens when ``Profile.on_activated()`` is called from outside ``Profile`` body?
 
-5. What happens when ``CustomProfile.on_activated()`` is called from outside ``CustomProfile`` body?
+* What happens when ``CustomProfile.on_activated()`` is called from outside ``CustomProfile`` body?
 
-6. What happens when ``Profile().on_activated()`` is called?
+* What happens when ``Profile().on_activated()`` is called?
 
-7. What happens when ``CustomProfile().on_activated()`` is called?
+* What happens when ``CustomProfile().on_activated()`` is called?
 
-8. What happens to all of the above when class ``CombinedProfile`` inherits from
-   ``FirstProfile`` and ``SecondProfile`` both of which inherit from ``Profile``?
+* What happens to all of the above when class ``CombinedProfile`` inherits from
+  ``FirstProfile`` and ``SecondProfile`` both of which inherit from ``Profile``?
+
+* How to list all hooks available for a given class?

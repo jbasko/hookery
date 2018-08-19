@@ -16,7 +16,6 @@ Declare a hook called ``on_activated`` for class ``Profile`` and trigger its han
 method ``activate()``:
 
 .. code-block:: python
-    :emphasize-lines: 1,3,6
 
     class Profile(Hookable):
 
@@ -39,7 +38,6 @@ Class Hook Handler Registration
 Register two handlers for the ``on_activated`` hook inside ``Profile`` class:
 
 .. code-block:: python
-    :emphasize-lines: 5-11
 
     class Profile(Hookable):
 
@@ -91,7 +89,6 @@ Add a hook specific to the derived ``CustomProfile`` class -- ``on_customisation
 single handler for it:
 
 .. code-block:: python
-    :emphasize-lines: 3,9-11
 
     class CustomProfile(Profile):
 

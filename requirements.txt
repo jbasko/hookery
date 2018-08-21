@@ -4,6 +4,7 @@
 black
 bumpversion==0.5.3
 coverage
+dataclasses
 flake8
 isort
 pytest

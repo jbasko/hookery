@@ -1,3 +1,8 @@
+import functools
+import inspect
+from typing import Any, List
+
+
 class hooks:  # Just to simulate a module called "hooks"
 
     @staticmethod
@@ -7,9 +12,12 @@ class hooks:  # Just to simulate a module called "hooks"
     @staticmethod
     def trigger(hook: "BoundHook", *args, **kwargs):
         assert isinstance(hook, InstanceHook)
-        print(f"Triggering {hook}")
-        print(hooks.get_handlers(hook))
-        raise NotImplementedError()
+        for handler in hooks.get_handlers(hook):
+            handler(*args, **kwargs)
+
+    @staticmethod
+    def get_hooks(hookable: Any) -> List["BoundHook"]:
+        return list({h for _, h in inspect.getmembers(hookable, predicate=lambda m: isinstance(m, BoundHook))})
 
 
 class HookBase:
@@ -18,15 +26,19 @@ class HookBase:
 
 class BoundHook(HookBase):
     def __init__(self, hook: "Hook", owner):
-        self._hook = hook  # type: Hook
+        self._base_hook = hook  # type: Hook
         self._owner = owner
 
     def __call__(self, *args, **kwargs):
         raise NotImplementedError()
 
     @property
+    def base_hook(self) -> "Hook":
+        return self._base_hook
+
+    @property
     def name(self):
-        return self._hook.name
+        return self.base_hook.name
 
     def get_handlers(self):
         """
@@ -55,6 +67,12 @@ class ClassHook(BoundHook):
         setattr(func, '_is_subclass_handler', True)
         return func
 
+    def get_handlers(self):
+        def _get_all():
+            for handler in self.base_hook._unbound_handlers:
+                yield handler
+        return list(_get_all())
+
 
 class InstanceHook(BoundHook):
     def __init__(self, hook, owner):
@@ -69,10 +87,10 @@ class InstanceHook(BoundHook):
         return getattr(self._owner.__class__, self.name)
 
     def get_handlers(self):
-        print(self._hook._owner_handlers)
-        print(self.class_hook._subclass_handlers)
-        print(self._instance_handlers)
-        raise NotImplementedError()
+        def _get_all():
+            for handler in self.base_hook._unbound_handlers:
+                yield functools.partial(handler, self._owner)
+        return list(_get_all())
 
 
 class Hook(HookBase):
@@ -87,7 +105,7 @@ class Hook(HookBase):
     def __init__(self):
         self.name = None
         self._owner = None
-        self._owner_handlers = []
+        self._unbound_handlers = []
 
     def __set_name__(self, owner, name):
         self.name = name
@@ -101,7 +119,8 @@ class Hook(HookBase):
         """
         if self._owner is not None:
             raise RuntimeError(f"Cannot register handlers on a finalised {self}")
-        self._owner_handlers.append(func)
+        self._unbound_handlers.append(func)
+        return func
 
     @property
     def _name_in_dict(self):
@@ -144,37 +163,3 @@ class CustomProfile(Profile):
     @on_customisation
     def log_customisation(self):
         print(f"Customising {self}")
-
-
-# print('Profile')
-# print(Profile.on_activated.__dict__)
-# print(Profile.on_activated._hook.__dict__)
-#
-# print('CustomProfile')
-# print(CustomProfile.on_activated.__dict__)
-# print(CustomProfile.on_activated._hook.__dict__)
-
-master = CustomProfile()
-
-
-# @master.on_activated
-# def on_master_profile_activated(profile):
-#     print(f"Activating master profile {profile}")
-
-
-master.activate()
-
-
-# # List on_activated handlers associated with all Profile instances
-# print(hooks.get_handlers(Profile.on_activated))
-#
-# # List on_activated handlers associated with all CustomProfile instances
-# print(hooks.get_handlers(CustomProfile.on_activated))
-#
-# p = Profile()
-# # List on_activated handlers associated with p
-# print(hooks.get_handlers(p.on_activated))
-#
-# c = CustomProfile()
-# # List on_activated handlers associated with c
-# print(hooks.get_handlers(c.on_activated))

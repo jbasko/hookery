@@ -50,7 +50,7 @@ def test_class_hook_in_simple_class_with_two_handlers():
     assert len(hooks.get_handlers(C.h2)) == 2
 
 
-def test_instance_hook_in_simple_class_with_two_handlers(calls):
+def test_instance_hook_in_simple_class_with_two_class_hook_handlers(calls):
     class C:
         h3 = Hook()
 
@@ -70,6 +70,7 @@ def test_instance_hook_in_simple_class_with_two_handlers(calls):
     assert c.h3.name == "h3"
 
     assert isinstance(c.h3.base_hook, Hook)
+    assert c.h3.class_hook is C.h3
 
     # Lookup helpers
     assert hooks.get_hooks(c) == [c.h3]
@@ -119,6 +120,13 @@ def test_derived_class_with_handlers_for_parent_hook(calls):
     assert hooks.get_hooks(D) == [D.h4]
     assert hooks.get_handlers(D.h4) == [C.h4_handler_in_c, D.h4_handler_in_d]
 
+    # Instance
+    d = D()
+    assert hooks.get_hooks(d) == [d.h4]
+    assert len(hooks.get_handlers(d.h4)) == 2
+
+    # More depth
+
     class E(D):
         pass
 
@@ -127,3 +135,35 @@ def test_derived_class_with_handlers_for_parent_hook(calls):
 
     assert hooks.get_handlers(E.h4) == [C.h4_handler_in_c, D.h4_handler_in_d]
     assert hooks.get_handlers(F.h4) == [C.h4_handler_in_c, D.h4_handler_in_d]
+
+    # Trigger!
+    f = F()
+    assert len(hooks.get_handlers(f.h4)) == 2
+
+    hooks.trigger(f.h4)
+    assert len(calls) == 2
+    assert calls[0].matches("h4_handler_in_c", f)
+    assert calls[1].matches("h4_handler_in_d", f)
+
+
+def test_instance_hook_with_class_and_instance_hook_handlers(calls):
+    class C:
+        h5 = Hook()
+
+        @h5
+        def h5_handler_in_c(self):
+            calls.register("h5_handler_in_c", self)
+
+    c = C()
+
+    @c.h5
+    def h5_handler_individually(cc):
+        calls.register("h5_handler_individually", cc)
+
+    assert len(hooks.get_handlers(c.h5)) == 2
+
+    # Trigger!
+    hooks.trigger(c.h5)
+    assert len(calls) == 2
+    assert calls[0].matches("h5_handler_in_c", c)
+    assert calls[1].matches("h5_handler_individually", c)

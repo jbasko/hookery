@@ -68,7 +68,6 @@ class ClassHook(BoundHook):
         Handlers registered in this way will only apply to sub-classes of this class.
         """
         self._subclass_handlers.append(func)
-        # setattr(func, '_is_subclass_handler', True)  # TODO is this needed?
         return func
 
     @property
@@ -103,11 +102,14 @@ class InstanceHook(BoundHook):
     def class_hook(self) -> ClassHook:
         return getattr(self._owner.__class__, self.name)
 
+    def _get_handlers(self):
+        for handler in self.class_hook.get_handlers():
+            yield functools.partial(handler, self._owner)
+        for handler in self._instance_handlers:
+            yield functools.partial(handler, self._owner)
+
     def get_handlers(self):
-        def _get_all():
-            for handler in self.base_hook._unbound_handlers:
-                yield functools.partial(handler, self._owner)
-        return list(_get_all())
+        return list(self._get_handlers())
 
 
 class Hook(HookBase):

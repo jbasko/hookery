@@ -86,3 +86,44 @@ def test_instance_hook_in_simple_class_with_two_handlers(calls):
     assert len(calls) == 2
     assert calls[0].matches("h3_handler_1", c)
     assert calls[1].matches("h3_handler_2", c)
+
+
+def test_derived_class_with_handlers_for_parent_hook(calls):
+    class C:
+        h4 = Hook()
+
+        @h4
+        def h4_handler_in_c(self):
+            calls.register("h4_handler_in_c", self)
+            return self
+
+    class D(C):
+        @C.h4
+        def h4_handler_in_d(self):
+            calls.register("h4_handler_in_d", self)
+            return self
+
+    # Make sure derived class's hook is bound to itself, not to parent
+    assert C.h4 is not D.h4
+
+    # Make sure D.h4 knows that it originates in the C class
+    assert D.h4.base_hook._owner is C
+
+    # Make sure handler decorated with @C.h4 does not end up as a handler of C.h4
+    assert hooks.get_handlers(C.h4) == [C.h4_handler_in_c]
+
+    # Make sure handler decorated with @C.h4 is registered as a subclass handler in C.h4
+    assert C.h4._subclass_handlers == [D.h4_handler_in_d]
+
+    # Lookup helpers
+    assert hooks.get_hooks(D) == [D.h4]
+    assert hooks.get_handlers(D.h4) == [C.h4_handler_in_c, D.h4_handler_in_d]
+
+    class E(D):
+        pass
+
+    class F(E, D):
+        pass
+
+    assert hooks.get_handlers(E.h4) == [C.h4_handler_in_c, D.h4_handler_in_d]
+    assert hooks.get_handlers(F.h4) == [C.h4_handler_in_c, D.h4_handler_in_d]

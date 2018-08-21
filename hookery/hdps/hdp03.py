@@ -19,6 +19,10 @@ class hooks:  # Just to simulate a module called "hooks"
     def get_hooks(hookable: Any) -> List["BoundHook"]:
         return list({h for _, h in inspect.getmembers(hookable, predicate=lambda m: isinstance(m, BoundHook))})
 
+    @staticmethod
+    def exists_hook(cls, hook_name):
+        return isinstance(getattr(cls, hook_name, None), BoundHook)
+
 
 class HookBase:
     pass
@@ -64,14 +68,27 @@ class ClassHook(BoundHook):
         Handlers registered in this way will only apply to sub-classes of this class.
         """
         self._subclass_handlers.append(func)
-        setattr(func, '_is_subclass_handler', True)
+        # setattr(func, '_is_subclass_handler', True)  # TODO is this needed?
         return func
 
+    @property
+    def is_inherited(self):
+        return self.base_hook._owner is not self._owner
+
+    def _get_handlers(self):
+        # Yield handlers which are registered in the class which declares the hook.
+        for handler in self.base_hook._unbound_handlers:
+            yield handler
+
+        # For inherited hooks go through all classes in the mro between the class that
+        # declares this hook and this class and yield all subclass handlers.
+        if self.is_inherited:
+            for cls in reversed(inspect.getmro(self._owner)[1:-1]):  # exclude owner class and object
+                if hooks.exists_hook(cls, self.name):
+                    yield from getattr(cls, self.name)._subclass_handlers
+
     def get_handlers(self):
-        def _get_all():
-            for handler in self.base_hook._unbound_handlers:
-                yield handler
-        return list(_get_all())
+        return list(self._get_handlers())
 
 
 class InstanceHook(BoundHook):

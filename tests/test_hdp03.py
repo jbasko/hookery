@@ -267,3 +267,28 @@ def test_same_name_handler_in_parallel_class_trees(calls):
     assert len(hooks.get_handlers(C.h8)) == 0
     assert len(hooks.get_handlers(E.h8)) == 2
     assert len(hooks.get_handlers(F.h8)) == 1
+
+
+def test_same_handler_mentioned_multiple_times(calls):
+    class C:
+        h9 = Hook()
+
+    class D(C):
+        @C.h9
+        def handle_h9(self):
+            calls.register("handle_h9_in_d")
+
+    class E(D):
+        handle_h9 = D.handle_h9
+
+    class F(E):
+        pass
+
+    class G(F):
+        @F.h9
+        def handle_h9(self):
+            calls.register("handle_h9_in_g")
+
+    assert len(hooks.get_handlers(E.h9)) == 1
+    assert len(hooks.get_handlers(F.h9)) == 1
+    assert len(hooks.get_handlers(G.h9)) == 2

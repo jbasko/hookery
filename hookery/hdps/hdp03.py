@@ -67,7 +67,6 @@ class ClassHook(BoundHook):
         You cannot register handlers on a class that has already been created.
         Handlers registered in this way will only apply to sub-classes of this class.
         """
-        # TODO See docs/hpds/03.rst !!!
         self._subclass_handlers.append(func)
         return func
 
@@ -92,7 +91,10 @@ class ClassHook(BoundHook):
             # How we check which ones are is by looking into all classes in class's mro
             # and comparing the class's handler-named attribute with the handler.
             # If it's an exact match, we know the handler comes from that class, so we are good to yield it.
-            is_in_mro = lambda func: any(getattr(cls, func.__name__, None) is func for cls in mro)
+            # + TODO I don't have a test for this...
+            # + We do cls.__dict__.get(...) because getattr(cls, ...) might return handler from parent class
+            # + and then we'd have duplicates.
+            is_in_mro = lambda func: any(cls.__dict__.get(func.__name__, None) is func for cls in mro)
 
             for cls in reversed(mro[1:-1]):  # exclude owner class and object
                 if hooks.exists_hook(cls, self.name):
@@ -102,7 +104,16 @@ class ClassHook(BoundHook):
                             yield subclass_handler
 
     def get_handlers(self):
-        return list(self._get_handlers())
+
+        # Remove duplicates and convert to a list.
+        # TODO Not sure there can be duplicates now. Need a test or remove this code.
+        seen = set()
+        handlers = []
+        for handler in self._get_handlers():
+            if handler not in seen:
+                seen.add(handler)
+                handlers.append(handler)
+        return handlers
 
 
 class InstanceHook(BoundHook):

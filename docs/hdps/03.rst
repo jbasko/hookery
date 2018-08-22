@@ -18,91 +18,18 @@ Main Issues
 Changelog
 =========
 
-2018-08-21
+2018-08-22
 
-Looks like we have to have a base class even with the global functions approach
-because there is no way to distinguish between ``@Profile.on_activation``
-decorators inside the body of ``class ProfileX(Profile)`` and ``class ProfileY(Profile)``.
-For both we can just register the handler in ``Profile._subclass_handlers``
-and that is it.
+We are able to distinguish between ``C._subclass_handlers`` registered through ``@C.hook`` in
+classes ``D(C)`` and ``E(C)`` (and their subclasses)!
 
-So, if we use the ``__init_subclass__`` hook (make sure that the user can still
-have their own ``__init_subclass__`` implementation -- document how to integrate),
-then we can:
+If we are looking for hook ``X.<hook>`` class handlers (class ``X`` being a descendant of class ``C``
+and class ``C`` being the class in which ``<hook>`` is declared),
+for each handler ``handler`` in ``C._subclass_handlers``, go through all classes in the MRO of ``X``
+between ``X`` and ``C`` and look for members of these class dictionary called ``handler.__name__``.
+If any of these members is the ``handler`` itself, then this handler is relevant to ``X.<hook>``.
 
-.. code-block:: python
-
-    class Hookable:
-
-        @classmethod
-        def __init_subclass__(cls, **kwargs):
-            super().__init_subclass__(**kwargs)
-
-            for base_cls in cls.__bases__:
-
-                # For each hook
-                # Get subclass handlers
-                # Register them on this class's (cls) corresponding hook
-                # as own handlers.
-
-Or, we could enforce handler registration on the last base class that is subclass
-of ``Hookable`` in the list of base classes?
-
-No, each could have different hooks... Must go through all.
-
-.. code-block:: python
-
-    class D(A, B, C):
-
-        @A.a
-        def handle_a(self):
-            pass
-
-        @B.b
-        def handle_b(self):
-            pass
-
-        @C.c
-        def handle_c(self):
-            pass
-
-After the code above runs:
-
-.. code-block:: python
-
-    A._subclass_handlers == []  # cleared!
-    D.a._own_handlers == [D.handle_a]
-    B.b._own_handlers == [D.handle_b]
-
-There is still a problem if someone does this:
-
-**THIS MIGHT BE A GOOD TEST FOR OTHER ISSUES TOO**
-
-
-.. code-block:: python
-
-    class D(A):
-
-        @A.a
-        def handle_a(self):
-            pass
-
-        class E(A):
-            @A.a
-            def handle_a(self):
-                pass
-
-        @A.a
-        def handle_a(self):
-            pass
-
-
-Ok, this is unacceptably dirty.
-
-...
-
-Have to mark the handlers as temporary and then update them when processing
-by ``__init_subclass__``?
+Of course this has to be repeated with all classes in the MRO between ``C`` and ``X`` excluding ``X`` itself.
 
 ===
 API

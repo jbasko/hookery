@@ -1,3 +1,5 @@
+import inspect
+
 from hookery.hdps.hdp03 import Hook, hooks, ClassHook, InstanceHook
 
 
@@ -167,3 +169,77 @@ def test_instance_hook_with_class_and_instance_hook_handlers(calls):
     assert len(calls) == 2
     assert calls[0].matches("h5_handler_in_c", c)
     assert calls[1].matches("h5_handler_individually", c)
+
+
+def test_derived_class_can_have_same_name_handlers(calls):
+    class C:
+        h6 = Hook()
+
+    class D(C):
+        @C.h6
+        def handle_h6(self):
+            calls.register("handle_h6_in_d", self)
+
+    class E(D):
+        @D.h6
+        def handle_h6(self):
+            calls.register("handle_h6_in_e", self)
+
+    e = E()
+    hooks.trigger(e.h6)
+    assert len(calls) == 2
+    assert calls[0].matches("handle_h6_in_d", e)
+    assert calls[1].matches("handle_h6_in_e", e)
+
+
+def test_handler_in_one_class_tree_branch_does_not_affect_another_branch(calls):
+    class C:
+        h7 = Hook()
+
+    class D(C):
+        @C.h7
+        def handle_h7(self):
+            calls.register("handle_h7_in_d", self)
+
+    class E(C):
+        @C.h7
+        def handle_h7(self):
+            calls.register("handle_h7_in_e", self)
+
+    d = D()
+    e = E()
+
+    assert len(hooks.get_handlers(d.h7)) == 1
+    assert len(hooks.get_handlers(e.h7)) == 1
+
+
+def test_profile(calls):
+    class Profile:
+        on_activated = Hook()
+
+        @on_activated
+        def log_activation(self):
+            calls.register("log_activation", self)
+
+        @on_activated
+        def validate_activation(self):
+            calls.register("validate_activation", self)
+
+        def activate(self, *args, **kwargs):
+            hooks.trigger(self.on_activated, *args, **kwargs)
+
+    class CustomProfile(Profile):
+        on_customisation = Hook()
+
+        @Profile.on_activated
+        def log_activation_by_custom_profile(self):
+            calls.register("log_activation_by_custom_profile", self)
+
+        @on_customisation
+        def log_customisation(self):
+            calls.register("log_customisation", self)
+
+    c = CustomProfile()
+    c.activate()
+    assert len(calls) == 3
+    assert calls[2].matches("log_activation_by_custom_profile", c)

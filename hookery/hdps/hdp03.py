@@ -67,6 +67,7 @@ class ClassHook(BoundHook):
         You cannot register handlers on a class that has already been created.
         Handlers registered in this way will only apply to sub-classes of this class.
         """
+        # TODO See docs/hpds/03.rst !!!
         self._subclass_handlers.append(func)
         return func
 
@@ -155,30 +156,3 @@ class Hook(HookBase):
             if self._name_in_dict not in instance.__dict__:
                 setattr(instance, self._name_in_dict, InstanceHook(hook=self, owner=instance))
             return getattr(instance, self._name_in_dict)
-
-
-class Profile:
-    on_activated = Hook()
-
-    @on_activated
-    def log_activation(self):
-        print(f"Activating {self}")
-
-    @on_activated
-    def validate_activation(self):
-        print(f"Validating activation of {self}")
-
-    def activate(self, *args, **kwargs):
-        hooks.trigger(self.on_activated, *args, **kwargs)
-
-
-class CustomProfile(Profile):
-    on_customisation = Hook()
-
-    @Profile.on_activated
-    def log_activation_by_custom_profile(self):
-        print(f"Activating CUSTOM {self}")
-
-    @on_customisation
-    def log_customisation(self):
-        print(f"Customising {self}")

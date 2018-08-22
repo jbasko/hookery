@@ -1,4 +1,5 @@
-__version__ = "90.0.0"
+__version__ = "5.0.0"
 
+from .base import Hook, hooks
 
-__all__ = []
+__all__ = ["Hook", "hooks"]

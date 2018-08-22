@@ -1,4 +1,10 @@
 #
+# Actual dependencies
+#
+
+dataclasses
+
+#
 # Development-only
 #
 black

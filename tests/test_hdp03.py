@@ -243,3 +243,27 @@ def test_profile(calls):
     c.activate()
     assert len(calls) == 3
     assert calls[2].matches("log_activation_by_custom_profile", c)
+
+
+def test_same_name_handler_in_parallel_class_trees(calls):
+    class C:
+        h8 = Hook()
+
+    class D(C):
+        @C.h8
+        def handle_h8(self):
+            calls.register("handle_h8_in_d", self)
+
+    class E(D):
+        @D.h8  # could be C.h8 too, doesn't matter!
+        def handle_h8(self):
+            calls.register("handle_h8_in_e", self)
+
+    class F(C):
+        @C.h8
+        def handle_h8(self):
+            calls.register("handle_h8_in_f", self)
+
+    assert len(hooks.get_handlers(C.h8)) == 0
+    assert len(hooks.get_handlers(E.h8)) == 2
+    assert len(hooks.get_handlers(F.h8)) == 1

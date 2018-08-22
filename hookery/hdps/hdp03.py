@@ -83,9 +83,23 @@ class ClassHook(BoundHook):
         # For inherited hooks go through all classes in the mro between the class that
         # declares this hook and this class and yield all subclass handlers.
         if self.is_inherited:
-            for cls in reversed(inspect.getmro(self._owner)[1:-1]):  # exclude owner class and object
+            mro = inspect.getmro(self._owner)
+
+            # Consider class hierarchy: C < D < E; C < F.
+            # D, E and F can all be registering handlers against C.hook_x
+            # which means that C.hook_x._subclass_handlers contains a union of handlers for D, E, F.
+            # Some handlers in this list are not for D, some are not for E, some are not for F.
+            # How we check which ones are is by looking into all classes in class's mro
+            # and comparing the class's handler-named attribute with the handler.
+            # If it's an exact match, we know the handler comes from that class, so we are good to yield it.
+            is_in_mro = lambda func: any(getattr(cls, func.__name__, None) is func for cls in mro)
+
+            for cls in reversed(mro[1:-1]):  # exclude owner class and object
                 if hooks.exists_hook(cls, self.name):
-                    yield from getattr(cls, self.name)._subclass_handlers
+                    for subclass_handler in getattr(cls, self.name)._subclass_handlers:
+                        # if subclass_handler is getattr(self._owner, subclass_handler.__name__, None):
+                        if is_in_mro(subclass_handler):
+                            yield subclass_handler
 
     def get_handlers(self):
         return list(self._get_handlers())

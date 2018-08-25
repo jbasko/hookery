@@ -174,7 +174,7 @@ class Hook(HookBase):
     @property
     def _name_in_dict(self):
         assert self.name
-        return f"hook#{self.name}"
+        return f"{self.name}#boundhook"
 
     def __get__(self, instance, owner) -> BoundHook:
         if instance is None:

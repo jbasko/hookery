@@ -2,7 +2,7 @@
 # Actual dependencies
 #
 
-dataclasses
+# None
 
 #
 # Development-only
@@ -10,8 +10,8 @@ dataclasses
 black
 bumpversion==0.5.3
 coverage
+dataclasses
 flake8
 isort
 pytest
 pytest-random-order
-tox

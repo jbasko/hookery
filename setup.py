@@ -14,7 +14,7 @@ def read(fname):
 
 setup(
     name="hookery",
-    version=read("hookery/__init__.py").split("\n")[0].split("=", 1)[1].strip().strip("'"),
+    version=read("hookery/__init__.py").split("\n")[0].split("=", 1)[1].strip().strip('"'),
     author="Jazeps Basko",
     author_email="jazeps.basko@gmail.com",
     maintainer="Jazeps Basko",
@@ -22,9 +22,9 @@ setup(
     license="MIT",
     url="https://github.com/jbasko/hookery",
     description="Trivial, primitive, naive, and optimistic hooks in Python 3.6+",
-    long_description=read("README.rst"),
+    long_description=read("docs/README.rst"),
     packages=["hookery"],
-    install_requires=["dataclasses"],
+    install_requires=[],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
